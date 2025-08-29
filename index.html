@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<!--
+  File: index.html
+  App: WealthFlow
+  Purpose: Single-page PWA for tracking loans, accounts, investments, crypto, and transactions locally in the browser.
+  Notes:
+    - This file is self-contained (HTML, CSS, JS) to keep deployment simple.
+    - Service worker and manifest enable offline support and installability.
+    - Sections are marked with comments for quick navigation.
+  Last updated: 2025-08-29 23:29 (local)
+-->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>WealthFlow</title>
+  <!-- PWA hooks (works when hosted over HTTPS) -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" id="metaThemeColor" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WealthFlow">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <link rel="apple-touch-icon" href="./apple-touch-icon-180.png">
+  <style>
+    :root{
+      /* default to dark for backward compatibility; will be overridden by [data-theme] */
+    }
+    :root[data-theme="dark"]{
+      --bg:linear-gradient(180deg,#0a0f1d 0%,#0f172a 100%);
+      --panel:#0b1220; --panel2:#111827; --border:#1f2937; --muted:#94a3b8; --text:#e5e7eb; --heading:#a5b4fc; --link:#93c5fd; --stripe:rgba(255,255,255,0.03); --activeBg:linear-gradient(180deg,#111827,#0b1220);
+      --green:#22c55e; --blue:#3b82f6; --amber:#f59e0b; --red:#ef4444; --purple:#a78bfa;
+      --ghost-border:#2a364a;
+    }
+    :root[data-theme="light"]{
+      --bg:#f8fafc;
+      --panel:#ffffff; --panel2:#f8fafc; --border:#e5e7eb; --muted:#6b7280; --text:#0f172a; --heading:#1f2937; --link:#2563eb; --stripe:rgba(0,0,0,0.03); --activeBg:#eef2ff;
+      --green:#16a34a; --blue:#2563eb; --amber:#d97706; --red:#dc2626; --purple:#7c3aed;
+      --ghost-border:#cbd5e1;
+    }
+    *{box-sizing:border-box}
+    html,body{min-height:100%;height:auto;margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica Neue,Arial;overflow-x:hidden}
+    a{color:var(--link)}
+
+    .layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh;min-height:100svh;min-height:100dvh}
+    @media(max-width:980px){
+      .layout{grid-template-columns:1fr}
+      /* Mobile drawer behavior for Safari compatibility */
+      .sidebar{position:fixed;top:0;left:0;bottom:0;width:min(80vw,280px);max-width:280px;transform:translateX(-100%);transition:transform .25s ease;z-index:1000}
+      .sidebar.open{transform:translateX(0)}
+      .topbar{justify-content:space-between}
+      #menuBtn{display:inline-flex}
+    }
+
+    .sidebar{background:var(--panel);border-right:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:10px}
+    .brand{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)}
+    .brand .logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(180deg,#22c55e,#16a34a);display:grid;place-items:center;font-weight:800;color:#052e16}
+    .brand .title{font-size:14px;font-weight:700}
+    .nav{display:flex;flex-direction:column;gap:6px}
+    .nav button{all:unset;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+    .nav button:hover{background:rgba(59,130,246,.08);border-color:var(--border)}
+    .nav button.active{background:var(--activeBg);border:1px solid var(--border)}
+    .nav .muted{color:var(--muted);font-size:12px;margin-left:12px}
+
+    .topbar{display:flex;gap:10px;align-items:center;justify-content:flex-end;padding:12px;border-bottom:1px solid var(--border);background:var(--panel)}
+    .container{padding:14px 18px;max-width:1200px;margin:0 auto}
+
+    .grid{display:grid;gap:16px}
+    .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    @media(max-width:980px){.grid-3,.grid-2{grid-template-columns:1fr}}
+
+    .card{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+    .card h3{margin:0 0 8px;font-size:16px;font-weight:700}
+    .muted{color:var(--muted);font-size:12px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .kpi{font-size:22px;font-weight:800}
+
+    input,select,button,textarea{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px}
+    input::placeholder{color:var(--muted)}
+    label{font-size:12px;color:var(--muted)}
+    .field{display:grid;gap:6px}
+
+    .btn{cursor:pointer;transition:transform .06s ease, background .2s ease, border-color .2s ease}
+    .btn:hover{transform:translateY(-1px)} .btn:active{transform:translateY(0)}
+    .btn.primary{background:linear-gradient(180deg,#22c55e,#16a34a);border:none;color:#052e16;font-weight:800}
+    .btn.blue{background:linear-gradient(180deg,#60a5fa,#3b82f6);border:none;color:#071426;font-weight:800}
+    .btn.warn{background:linear-gradient(180deg,#fbbf24,#f59e0b);border:none;color:#231a00;font-weight:800}
+    .btn.ghost{background:transparent;border-color:var(--ghost-border)}
+    .btn.danger{background:linear-gradient(180deg,#f87171,#ef4444);border:none;color:#3b0a0a;font-weight:800}
+
+    /* Layout scrolling fixes */
+    .layout > main{min-height:0}
+    @media(max-width:980px){ .layout > main{overflow:auto;-webkit-overflow-scrolling:touch} }
+    .spacer{height:16px}
+    @supports (padding: env(safe-area-inset-bottom)){
+      main{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+    }
+
+    /* iOS PWA safe-area adjustments to prevent topbar/content underlap with camera/time bar */
+    @supports (padding: env(safe-area-inset-top)){
+      /* Push overall content below the iOS status bar when in standalone with viewport-fit=cover */
+      body{padding-top:constant(safe-area-inset-top);padding-top:env(safe-area-inset-top)}
+      /* Ensure mobile drawer content isn't hidden under the notch */
+      @media(max-width:980px){ .sidebar{padding-top:calc(14px + env(safe-area-inset-top))} }
+    }
+
+        /* Mobile menu controls */
+        #menuBtn{display:inline-flex;align-items:center;gap:8px}
+        .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:none}
+        .backdrop.show{display:block}
+        body.menu-open{overflow:hidden}
+        @media(min-width:981px){ #menuBtn{display:none} }
+
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px dashed var(--border);text-align:left;font-size:14px}
+    th{color:var(--heading);font-weight:700}
+    tbody tr:nth-child(even){background:var(--stripe)}
+
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--muted)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .hidden{display:none}
+
+    dialog{border:1px solid var(--border);background:var(--panel2);color:var(--text);border-radius:14px;padding:0;width:min(560px,92vw)}
+    dialog::backdrop{background:rgba(0,0,0,.6)}
+    .modal-header{padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .modal-body{padding:16px;display:grid;gap:12px}
+    .modal-actions{padding:12px 16px 16px;display:flex;gap:8px;justify-content:flex-end}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside id="appSidebar" class="sidebar" aria-label="Sidebar navigation">
+      <div class="brand"><div class="logo">WF</div><div><div class="title">WealthFlow</div><div class="muted">Track money in, money out, and make smarter lending & investing moves.</div></div></div>
+      <div class="nav">
+        <button class="active" data-view="dashboard" onclick="navTo('dashboard', this)">🏠 Dashboard</button>
+        <button data-view="accounts" onclick="navTo('accounts', this)">🏦 Accounts</button>
+        <button data-view="investments" onclick="navTo('investments', this)">💼 Savings & Investments</button>
+        <button data-view="crypto" onclick="navTo('crypto', this)">🪙 Crypto</button>
+        <button data-view="loans" onclick="navTo('loans', this)">🤝 Lending</button>
+        <button data-view="transactions" onclick="navTo('transactions', this)">📒 Transactions</button>
+        <button data-view="categories" onclick="navTo('categories', this)">🏷️ Categories</button>
+        <div class="muted">System</div>
+        <button data-view="settings" onclick="navTo('settings', this)">⚙️ Settings & PWA</button>
+      </div>
+    </aside>
+
+    <main>
+      <button id="installBtn" class="btn blue" style="display:none;">Install App</button>
+
+      <div class="topbar">
+        <button id="menuBtn" class="btn ghost" aria-label="Open menu" aria-controls="appSidebar" aria-expanded="false">☰ Menu</button>
+        <button id="themeToggle" class="btn ghost" aria-label="Toggle theme">🌓 Theme</button>
+        <button id="exportBtn" class="btn ghost">Export JSON</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none;" />
+        <button id="importBtn" class="btn ghost">Import JSON</button>
+        <button id="resetBtn" class="btn danger">Reset All</button>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div id="view-dashboard" class="container view">
+        <div class="grid grid-3">
+          <div class="card">
+            <h3>Net Worth <span class="muted">(Base</span>
+              <select id="baseCcy" style="margin-left:6px;"><option value="INR">INR</option><option value="SGD" selected>SGD</option><option value="USD">USD</option></select>
+              <span class="muted">)</span>
+            </h3>
+            <div id="kpiNetWorth" class="kpi">—</div>
+            <div class="row" style="margin-top:6px; align-items:center;">
+              <label class="row" style="gap:6px;"><input type="checkbox" id="includeLending" checked><span class="muted">Include Lending</span></label>
+              <span class="muted" style="margin-left:auto;">FX: <span id="fxBadge" class="chip">—</span></span>
+            </div>
+          </div>
+          <div class="card"><h3>Total Assets</h3><div id="kpiAssets" class="kpi">—</div><div class="muted">Cash/Bank · Savings · Investments · Crypto</div></div>
+          <div class="card"><h3>Total Liabilities</h3><div id="kpiLiabilities" class="kpi">—</div><div class="muted">Credit Cards (manual)</div></div>
+        </div>
+        <div class="spacer"></div>
+        <div class="grid grid-3">
+          <div class="card"><h3>Outstanding Principal</h3><div id="kpiOutstanding" class="kpi">—</div><div class="muted">Active loans only</div></div>
+          <div class="card"><h3>Total Repaid (Principal)</h3><div id="kpiRepaid" class="kpi">—</div><div class="muted">Cumulative</div></div>
+          <div class="card"><h3>Interest Collected</h3><div id="kpiInterest" class="kpi">—</div><div class="muted">All time</div></div>
+        </div>
+        <div class="spacer"></div>
+        <div class="card">
+          <h3>Assets by Category</h3>
+          <div class="grid grid-2">
+            <div>
+              <div class="muted">Accounts</div>
+              <div id="kpiAssetsAccounts" class="kpi">—</div>
+            </div>
+            <div>
+              <div class="muted">Savings &amp; Investments</div>
+              <div id="kpiAssetsSavings" class="kpi">—</div>
+            </div>
+            <div>
+              <div class="muted">Crypto</div>
+              <div id="kpiAssetsCrypto" class="kpi">—</div>
+            </div>
+            <div>
+              <div class="muted">Lending</div>
+              <div id="kpiAssetsLending" class="kpi">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCOUNTS -->
+      <div id="view-accounts" class="container view hidden">
+        <div class="card">
+          <h3>Accounts (Cash / Bank / Credit Card)</h3>
+          <div class="grid grid-3">
+            <div class="field"><label>Type</label><select id="acctType"><option>Cash</option><option>Bank</option><option>Credit Card</option></select></div>
+            <div class="field"><label>Name</label><input id="acctName" placeholder="e.g., DBS Multiplier / Cash"/></div>
+            <div class="field"><label>Currency</label><select id="acctCcy"><option>INR</option><option selected>SGD</option></select></div>
+            <div class="field"><label>Balance / Limit Used</label><input id="acctBal" type="number" step="0.01" placeholder="e.g., 2500"/></div>
+            <div class="field"><label>Note</label><input id="acctNote" placeholder="Optional"/></div>
+          </div>
+          <div class="row" style="margin-top:10px;">
+            <button id="addAcctBtn" class="btn primary">Add / Update</button>
+            <button id="openPayCCBtn" class="btn blue">Pay Credit Card</button>
+          </div>
+          <div style="overflow:auto;margin-top:10px;">
+            <table id="acctTable"><thead><tr><th>Type</th><th>Name</th><th>Currency</th><th class="mono">Amount</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- INVESTMENTS -->
+      <div id="view-investments" class="container view hidden">
+        <div class="card">
+          <h3>Savings & Investments (Manual)</h3>
+          <div class="grid grid-3">
+            <div class="field"><label>Asset Name</label><input id="invName" placeholder="e.g., SSB Aug 2025 / FD 6m"/></div>
+            <div class="field"><label>Currency</label><select id="invCcy"><option>INR</option><option selected>SGD</option></select></div>
+            <div class="field"><label>Amount</label><input id="invAmt" type="number" step="0.01" placeholder="e.g., 10000"/></div>
+            <div class="field"><label>Mode/Type</label><input id="invMode" placeholder="e.g., SSB / FD / ETF"/></div>
+            <div class="field"><label>Note</label><input id="invNote" placeholder="Optional"/></div>
+          </div>
+          <div class="row" style="margin-top:10px;"><button id="addInvBtn" class="btn primary">Add / Update</button></div>
+          <div style="overflow:auto;margin-top:10px;"><table id="invTable"><thead><tr><th>Name</th><th>Mode</th><th>Currency</th><th class="mono">Amount</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- CRYPTO -->
+      <div id="view-crypto" class="container view hidden">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center;">
+            <h3>Crypto Portfolio</h3>
+            <button id="refreshPricesBtn" class="btn ghost">Refresh Prices</button>
+          </div>
+          <div class="grid grid-3">
+            <div class="field"><label>Ticker</label><input id="cTicker" placeholder="e.g., BTC, ETH, SOL"/></div>
+            <div class="field"><label>Quantity</label><input id="cQty" type="number" step="0.00000001"/></div>
+            <div class="field"><label>Buy Price (per unit)</label><input id="cBuy" type="number" step="0.0001"/></div>
+            <div class="field"><label>Currency</label><select id="cCcy"><option>INR</option><option selected>SGD</option></select></div>
+            <div class="field"><label>Note/Wallet</label><input id="cNote" placeholder="Optional (e.g., Binance, Ledger)"/></div>
+          </div>
+          <div class="row" style="margin-top:10px;"><button id="addCryptoBtn" class="btn primary">Add / Update</button><span class="muted">Live prices via CoinGecko (cached 2 min).</span></div>
+          <div style="overflow:auto;margin-top:10px;">
+            <table id="cryptoTable"><thead><tr><th>Ticker</th><th>Qty</th><th>Buy@</th><th>Currency</th><th class="mono">Last Price (SGD/INR)</th><th class="mono">Value (Base)</th><th class="mono">P/L (Base)</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOANS -->
+      <div id="view-loans" class="container view hidden">
+        <div class="card">
+          <h3>New Loan</h3>
+          <div class="grid grid-3">
+            <div class="field"><label>Borrower</label><input id="borrower" placeholder="Name or label"/></div>
+            <div class="field"><label>Currency</label><select id="currency"><option value="INR">INR</option><option value="SGD">SGD</option></select></div>
+            <div class="field"><label>Principal</label><input id="principal" type="number" step="0.01" placeholder="e.g., 10000"/></div>
+            <div class="field"><label>Annual Interest %</label><input id="apr" type="number" step="0.01" placeholder="e.g., 12 (0 for no interest)"/></div>
+            <div class="field"><label>Start Date</label><input id="startDate" type="date"/></div>
+            <div class="field"><label>Notes</label><input id="notes" placeholder="Optional"/></div>
+          </div>
+          <div class="row" style="margin-top:10px;"><button id="addLoanBtn" class="btn primary">Add Loan</button><span class="muted">Interest accrues daily on remaining principal between transactions (Actual/365).</span></div>
+        </div>
+        <div class="spacer"></div>
+        <div class="card"><div class="row" style="justify-content:space-between;align-items:center;"><h3>Loans</h3><span class="chip">Sort by <select id="sortSelect" style="margin-left:6px;"><option value="created_desc">Newest</option><option value="created_asc">Oldest</option><option value="balance_desc">Balance ↓</option><option value="balance_asc">Balance ↑</option><option value="borrower_asc">Borrower A→Z</option></select></span></div>
+          <div style="overflow:auto;"><table id="loansTable"><thead><tr><th>Borrower</th><th>Currency</th><th>APR%</th><th>Principal Balance</th><th>Repaid</th><th>Interest</th><th>Last Txn</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- TRANSACTIONS -->
+      <div id="view-transactions" class="container view hidden">
+        <div class="card">
+          <h3>Transactions</h3>
+          <div class="grid grid-3">
+            <div class="field"><label>Date</label><input type="date" id="tDate"></div>
+            <div class="field"><label>Type</label><select id="tType"><option>Expense</option><option>Income</option><option>Transfer</option></select></div>
+            <div class="field"><label>Account</label><select id="tAccount"></select></div>
+            <div class="field" id="tTargetWrap" style="display:none"><label>Target Account (for Transfer/CC Pay)</label><select id="tTarget"></select></div>
+            <div class="field" id="tCategoryWrap"><label>Category</label><select id="tCategory"></select></div>
+            <div class="field"><label>Amount</label><input id="tAmount" type="number" step="0.01"></div>
+            <div class="field"><label>Note</label><input id="tNote" placeholder="Optional"></div>
+          </div>
+          <div class="row" style="margin-top:10px;"><button id="addTxnBtn" class="btn primary">Add Transaction</button>
+            <button id="closeMonthBtn" class="btn warn">Close Month</button><span class="muted">Closes selected month, aggregates expenses by category, and clears detailed txns for that month.</span>
+            <input type="month" id="closeMonth" style="margin-left:auto;">
+          </div>
+          <div style="overflow:auto;margin-top:10px;">
+            <table id="txnTable"><thead><tr><th>Date</th><th>Type</th><th>Account</th><th>→ Target</th><th>Category</th><th class="mono">Amount</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CATEGORIES -->
+      <div id="view-categories" class="container view hidden">
+        <div class="card">
+          <h3>Categories & Monthly Totals</h3>
+          <div class="row">
+            <div class="field"><label>New Category</label><input id="catName" placeholder="e.g., Food"/></div>
+            <button id="addCatBtn" class="btn primary">Add Category</button>
+          </div>
+          <div class="spacer"></div>
+          <div class="grid grid-2">
+            <div>
+              <h3>All Categories</h3>
+              <ul id="catList"></ul>
+            </div>
+            <div>
+              <h3>Monthly Totals</h3>
+              <div class="muted">Aggregated at close. Totals shown in base currency.</div>
+              <div style="overflow:auto;margin-top:10px;">
+                <table id="monthlyTable"><thead><tr><th>Month</th><th>Category</th><th class="mono">Total (Base)</th></tr></thead><tbody></tbody></table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="view-settings" class="container view hidden">
+        <div class="card">
+          <h3>PWA & Offline</h3>
+          <ol>
+            <li>Place <code>manifest.webmanifest</code>, <code>service-worker.js</code>, and icons (<code>icon-192.png</code>, <code>icon-512.png</code>, <code>apple-touch-icon-180.png</code>) next to this file.</li>
+            <li>Host over HTTPS (GitHub Pages/Netlify/etc.).</li>
+            <li>Open on iOS Safari → Share → <b>Add to Home Screen</b>.</li>
+          </ol>
+          <pre class="muted" style="white-space:pre-wrap">manifest.webmanifest
+{
+  "name": "Loan & Portfolio Tracker",
+  "short_name": "Loans",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+
+service-worker.js
+const CACHE = 'loan-tracker-cache-v3';
+const ASSETS = [
+  './', './index.html', './manifest.webmanifest',
+  './icon-192.png', './icon-512.png', './apple-touch-icon-180.png'
+];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(
+    caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
+      const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return res;
+    }).catch(()=>cached))
+  );
+});
+</pre>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <dialog id="payModal">
+    <div class="modal-header"><strong>Record Loan Payment</strong><button class="btn ghost" onclick="closePayModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Payment Date</label><input type="date" id="payDate"></div>
+      <div class="field"><label>Amount</label><input type="number" id="payAmount" step="0.01" placeholder="e.g., 1000"></div>
+      <div id="payPreview" class="muted mono">—</div>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closePayModal()">Cancel</button><button class="btn blue" id="previewBtn">Preview</button><button class="btn primary" id="confirmPayBtn" disabled>Confirm</button></div>
+  </dialog>
+
+  <dialog id="topupModal">
+    <div class="modal-header"><strong>Top-up Principal</strong><button class="btn ghost" onclick="closeTopupModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Date</label><input type="date" id="topupDate"></div>
+      <div class="field"><label>Amount</label><input type="number" id="topupAmount" step="0.01" placeholder="e.g., 5000"></div>
+      <div class="muted">Top-up adds to principal balance (no interest change).</div>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeTopupModal()">Cancel</button><button class="btn primary" id="confirmTopupBtn">Add Top-up</button></div>
+  </dialog>
+
+  <dialog id="ccPayModal">
+    <div class="modal-header"><strong>Pay Credit Card Bill</strong><button class="btn ghost" onclick="closeCCPayModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>From Account (Cash/Bank)</label><select id="ccFrom"></select></div>
+      <div class="field"><label>Credit Card</label><select id="ccCard"></select></div>
+      <div class="field"><label>Date</label><input type="date" id="ccDate"></div>
+      <div class="field"><label>Amount</label><input type="number" id="ccAmount" step="0.01"></div>
+      <div class="muted">This will deduct from the selected Cash/Bank and reduce the Credit Card used balance.</div>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeCCPayModal()">Cancel</button><button class="btn primary" id="confirmCCPayBtn">Pay</button></div>
+  </dialog>
+
+  <dialog id="invTopupModal">
+    <div class="modal-header"><strong>Increase Savings / Investment</strong><button class="btn ghost" onclick="closeInvTopupModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>From Account (Cash/Bank)</label><select id="invFrom"></select></div>
+      <div class="field"><label>Date</label><input type="date" id="invDate"></div>
+      <div class="field"><label>Amount</label><input type="number" id="invAmount" step="0.01" placeholder="e.g., 1000"></div>
+      <div class="muted">Deducts from selected account and increases the chosen savings/investment entry.</div>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeInvTopupModal()">Cancel</button><button class="btn primary" id="confirmInvTopupBtn">Increase</button></div>
+  </dialog>
+
+  <script>
+    // ---------- Utilities & State ----------
+    const LS_KEY='loan-tracker:v3';
+    const THEME_KEY='loan-tracker:theme';
+    function applyTheme(theme){
+      const root=document.documentElement; const t=(theme==='light')?'light':'dark';
+      root.setAttribute('data-theme', t);
+      const meta=document.getElementById('metaThemeColor'); if(meta) meta.setAttribute('content', t==='dark' ? '#0f172a' : '#f8fafc');
+      const btn=document.getElementById('themeToggle'); if(btn) btn.textContent = t==='dark' ? '🌙 Dark' : '☀️ Light';
+    }
+    function initTheme(){
+      const saved=localStorage.getItem(THEME_KEY);
+      let t=saved; if(!t){ t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'; }
+      applyTheme(t);
+    }
+    function toggleTheme(){
+      const curr=(document.documentElement.getAttribute('data-theme')==='light')?'light':'dark'; const next= curr==='light'?'dark':'light';
+      localStorage.setItem(THEME_KEY,next); applyTheme(next);
+    }
+    const byId=id=>document.getElementById(id);
+    const fmt=(amt,ccy)=>new Intl.NumberFormat(undefined,{style:'currency',currency:ccy,maximumFractionDigits:2}).format(Number(amt||0));
+    const todayISO=()=>new Date().toISOString().slice(0,10);
+    const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
+
+    function load(){
+      try{const obj=JSON.parse(localStorage.getItem(LS_KEY)); if(obj) return obj;}catch{}
+      try{
+        const old=JSON.parse(localStorage.getItem('loan-tracker:v2')||'{}');
+        if(old&&old.loans){
+          const migrated={ loans:old.loans||[], accounts:old.accounts||[], investments:old.investments||[], crypto:old.crypto||[], cache: old.cache||{rates:null,prices:null}, transactions:[], categories:['Food','Transport','Bills','Shopping','Health','Education','Travel','Entertainment','Fees','Others'], monthlyTotals:{} };
+          localStorage.setItem(LS_KEY, JSON.stringify(migrated)); return migrated;
+        }
+      }catch{}
+      const fresh={ loans:[], accounts:[], investments:[], crypto:[], cache:{rates:null,prices:null}, transactions:[], categories:['Food','Transport','Bills','Shopping','Health','Education','Travel','Entertainment','Fees','Others'], monthlyTotals:{} };
+      localStorage.setItem(LS_KEY, JSON.stringify(fresh)); return fresh;
+    }
+    function save(s){ localStorage.setItem(LS_KEY, JSON.stringify(s)); }
+
+    function daysBetween(a,b){ const d1=new Date(a), d2=new Date(b); return Math.max(0, Math.round((d2-d1)/86400000)); }
+    const lastActivityDate=loan=>loan.lastCalcDate||loan.startDate;
+    function computeAccruedInterest(loan, asOfDate){ const apr=Number(loan.apr)||0; const days=daysBetween(lastActivityDate(loan), asOfDate); if(apr<=0) return {days,interest:0}; const daily=apr/100/365; return {days, interest:Number(loan.balance)*daily*days}; }
+
+    // FX + Prices
+    const COINGECKO_IDS={ BTC:'bitcoin', ETH:'ethereum', WBTC:'wrapped-bitcoin', XRP:'ripple', BNB:'binancecoin', SOL:'solana', USDT:'tether', USDC:'usd-coin', MATIC:'matic-network', ADA:'cardano', DOGE:'dogecoin', TRX:'tron'};
+    async function fetchRates(){
+      const s=load();
+      const now=Date.now();
+      if(s.cache?.rates && (now-s.cache.rates.ts)<600000) return s.cache.rates.data;
+      try{
+      // Use Frankfurter free API (ECB rates)
+      const res=await fetch('https://api.frankfurter.app/latest?from=SGD&to=INR,USD');
+      const j=await res.json();
+      const data={SGD:1, INR:j.rates?.INR||60, USD:j.rates?.USD||0.73};
+      s.cache.rates={ts:now,data};
+      save(s);
+      return data;
+      }catch{
+      return s.cache?.rates?.data || {SGD:1, INR:60, USD:0.73};
+      }
+      }
+
+    async function fetchCryptoPrices(tickers){ const s=load(); const ids=tickers.map(t=>COINGECKO_IDS[t.toUpperCase()]).filter(Boolean); if(!ids.length) return {}; const key=ids.sort().join(','); const now=Date.now(); if(s.cache?.prices && s.cache.prices[key] && (now-s.cache.prices[key].ts)<120000) return s.cache.prices[key].data; try{ const url=`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids.join(','))}&vs_currencies=sgd,inr,usd`; const res=await fetch(url); const j=await res.json(); if(!s.cache.prices) s.cache.prices={}; s.cache.prices[key]={ts:now,data:j}; save(s); return j; }catch{return {}} }
+
+    function summarize(state){ const totals={INR:{outstanding:0,repaid:0,interest:0}, SGD:{outstanding:0,repaid:0,interest:0}}; state.loans.forEach(l=>{ const c=totals[l.currency]; c.outstanding+= l.closed?0:Number(l.balance); c.repaid+=Number(l.totalRepaid||0); c.interest+=Number(l.totalInterest||0); }); return totals; }
+
+    // ---------- Navigation ----------
+    function navTo(view, btn){ document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden')); byId(`view-${view}`).classList.remove('hidden'); document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active')); if(btn) btn.classList.add('active'); if(view==='transactions') hydrateAccountSelects();
+      // Close mobile menu after navigation
+      if(window.innerWidth<=980){ document.getElementById('appSidebar')?.classList.remove('open'); document.body.classList.remove('menu-open'); const mb=document.getElementById('menuBtn'); if(mb) mb.setAttribute('aria-expanded','false'); document.getElementById('backdrop')?.classList.remove('show'); }
+    }
+
+    // ---------- KPIs ----------
+    async function renderKPIs(state){
+      const kpiNetWorthEl=byId('kpiNetWorth'), kpiAssetsEl=byId('kpiAssets'), kpiLiabEl=byId('kpiLiabilities');
+      const kpiOutstandingEl=byId('kpiOutstanding'), kpiRepaidEl=byId('kpiRepaid'), kpiInterestEl=byId('kpiInterest');
+      const baseSel=byId('baseCcy'), lendChk=byId('includeLending'), fxBadge=byId('fxBadge');
+      const base=baseSel?.value||'SGD', includeLending=lendChk?.checked??true;
+      const rates=await fetchRates().catch(()=>({SGD:1, INR:60, USD:0.73})); if(fxBadge) fxBadge.textContent=`1 SGD = ${Number(rates.INR||60).toFixed(2)} INR | ${Number(rates.USD||0.73).toFixed(2)} USD`;
+      const toBase=(amt,ccy)=>{ amt=Number(amt)||0; const rSgdToCcy=rates[ccy]||1; const rSgdToBase=rates[base]||1; return (amt / rSgdToCcy) * rSgdToBase; };
+
+      let assetsBase=0, liabilitiesBase=0;
+      let accountsBase=0;
+      (state.accounts||[]).forEach(a=>{ const val=toBase(a.amount||0,a.currency); if((a.type||'').toLowerCase()==='credit card') liabilitiesBase+=val; else { assetsBase+=val; accountsBase+=val; } });
+      let savingsBase=0; (state.investments||[]).forEach(i=>{ const v=toBase(i.amount||0,i.currency); assetsBase+=v; savingsBase+=v; });
+      let cryptoBase=0; (state.crypto||[]).forEach(c=>{ const v=(Number(c.quantity)||0) * Number(c.lastPrice?.[base]||0); cryptoBase+=v; }); assetsBase+=cryptoBase;
+
+      const sums=summarize(state); const lendBase=toBase(sums.SGD?.outstanding||0,'SGD')+toBase(sums.INR?.outstanding||0,'INR');
+      const net= includeLending? (assetsBase-liabilitiesBase+lendBase):(assetsBase-liabilitiesBase);
+
+      const fmtBase=v=>new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(v);
+      if(kpiNetWorthEl) kpiNetWorthEl.textContent=fmtBase(net);
+      if(kpiAssetsEl) kpiAssetsEl.textContent=fmtBase(assetsBase+(includeLending?lendBase:0));
+      if(kpiLiabEl) kpiLiabEl.textContent=fmtBase(liabilitiesBase);
+
+      // Assets by category
+      const elAcc=byId('kpiAssetsAccounts'), elSav=byId('kpiAssetsSavings'), elCry=byId('kpiAssetsCrypto'), elLen=byId('kpiAssetsLending');
+      if(elAcc) elAcc.textContent = fmtBase(accountsBase);
+      if(elSav) elSav.textContent = fmtBase(savingsBase);
+      if(elCry) elCry.textContent = fmtBase(cryptoBase);
+      if(elLen) elLen.textContent = fmtBase(lendBase);
+
+      const outParts=[]; if(sums.INR?.outstanding) outParts.push(`INR ${Number(sums.INR.outstanding).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.SGD?.outstanding) outParts.push(`SGD ${Number(sums.SGD.outstanding).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(kpiOutstandingEl) kpiOutstandingEl.textContent=outParts.join('  |  ')||'—';
+      const repParts=[]; if(sums.INR?.repaid) repParts.push(`INR ${Number(sums.INR.repaid).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.SGD?.repaid) repParts.push(`SGD ${Number(sums.SGD.repaid).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(kpiRepaidEl) kpiRepaidEl.textContent=repParts.join('  |  ')||'—';
+      const intParts=[]; if(sums.INR?.interest) intParts.push(`INR ${Number(sums.INR.interest).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.SGD?.interest) intParts.push(`SGD ${Number(sums.SGD.interest).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(kpiInterestEl) kpiInterestEl.textContent=intParts.join('  |  ')||'—';
+    }
+
+    // ---------- Renders ----------
+    function renderLoans(state){
+      const tbody=document.querySelector('#loansTable tbody'); if(!tbody) return; tbody.innerHTML='';
+      const sort=byId('sortSelect').value; const loans=[...state.loans];
+      loans.sort((a,b)=>{ if(sort==='created_desc') return b.createdAt-a.createdAt; if(sort==='created_asc') return a.createdAt-b.createdAt; if(sort==='balance_desc') return b.balance-a.balance; if(sort==='balance_asc') return a.balance-b.balance; if(sort==='borrower_asc') return a.borrower.localeCompare(b.borrower); return 0; });
+      for(const l of loans){
+        const tr=document.createElement('tr'); const last=l.lastCalcDate||l.startDate;
+        tr.innerHTML=`<td>${l.borrower}</td><td>${l.currency}</td><td>${Number(l.apr).toFixed(2)}</td><td class="mono">${fmt(l.balance,l.currency)}</td><td class="mono">${fmt(l.totalRepaid||0,l.currency)}</td><td class="mono">${fmt(l.totalInterest||0,l.currency)}</td><td>${last}</td><td>${l.closed?'<span class="chip" style="border-color:#204026;color:#86efac;">Closed</span>':'<span class="chip">Active</span>'}</td><td><div class="row"><button class="btn blue" ${l.closed?'disabled':''} onclick="openPayModal('${l.id}')">Payment</button><button class="btn ghost" ${l.closed?'disabled':''} onclick="openTopupModal('${l.id}')">Top-up</button><button class="btn warn" onclick="toggleCloseLoan('${l.id}')">${l.closed?'Reopen':'Close'}</button><button class="btn ghost" onclick="viewHistory('${l.id}')">History</button><button class="btn danger" onclick="deleteLoan('${l.id}')">Delete</button></div></td>`;
+        tbody.appendChild(tr);
+      }
+    }
+    function renderAccounts(state){
+      const tbody=document.querySelector('#acctTable tbody'); if(!tbody) return; tbody.innerHTML='';
+      state.accounts.forEach(a=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${a.type}</td><td>${a.name}</td><td>${a.currency}</td><td class="mono">${fmt(a.amount,a.currency)}</td><td>${a.note||''}</td><td><div class="row"><button class="btn ghost" onclick="editAccount('${a.id}')">Edit</button><button class="btn danger" onclick="deleteAccount('${a.id}')">Delete</button></div></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function renderInvestments(state){
+      const tbody=document.querySelector('#invTable tbody'); if(!tbody) return; tbody.innerHTML='';
+      state.investments.forEach(i=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${i.name}</td><td>${i.mode||''}</td><td>${i.currency}</td><td class="mono">${fmt(i.amount,i.currency)}</td><td>${i.note||''}</td><td><div class="row"><button class="btn blue" onclick="openInvTopupModal('${i.id}')">Increase</button><button class="btn ghost" onclick="editInvestment('${i.id}')">Edit</button><button class="btn danger" onclick="deleteInvestment('${i.id}')">Delete</button></div></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function renderCrypto(state){
+      const tbody=document.querySelector('#cryptoTable tbody'); if(!tbody) return; tbody.innerHTML='';
+      const base=byId('baseCcy')?.value||'SGD';
+      state.crypto.forEach(c=>{
+        const last=c.lastPrice?`SGD ${Number(c.lastPrice.SGD||0).toLocaleString(undefined,{maximumFractionDigits:4})} / INR ${Number(c.lastPrice.INR||0).toLocaleString(undefined,{maximumFractionDigits:2})}`:'—';
+        const valueBase=(Number(c.quantity)||0)*Number(c.lastPrice?.[base]||0);
+        const costBase=(c.currency===base)? (Number(c.quantity||0)*Number(c.buyPrice||0)):0; // simple same-ccy cost
+        const pl=valueBase-costBase;
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${c.ticker}</td><td class="mono">${Number(c.quantity).toLocaleString()}</td><td class="mono">${fmt(c.buyPrice||0,c.currency)}</td><td>${c.currency}</td><td class="mono">${last}</td><td class="mono">${fmt(valueBase||0,base)}</td><td class="mono" style="color:${pl>=0?'#86efac':'#fca5a5'};">${fmt(pl||0,base)}</td><td>${c.note||''}</td><td><div class="row"><button class="btn ghost" onclick="editCrypto('${c.id}')">Edit</button><button class="btn danger" onclick="deleteCrypto('${c.id}')">Delete</button></div></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function renderTransactions(state){
+      const tbody=document.querySelector('#txnTable tbody'); if(!tbody) return; tbody.innerHTML='';
+      (state.transactions||[]).slice().reverse().forEach(tx=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${tx.date}</td><td>${tx.type}</td><td>${tx.accountName}</td><td>${tx.targetName||''}</td><td>${tx.category||''}</td><td class="mono">${fmt(tx.amount, tx.currency)}</td><td>${tx.note||''}</td><td><button class="btn danger" onclick="deleteTxn('${tx.id}')">Delete</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    async function renderCategories(state){
+      const ul=byId('catList'); if(!ul) return; ul.innerHTML='';
+      (state.categories||[]).forEach(c=>{ const li=document.createElement('li'); li.textContent=c; ul.appendChild(li); });
+      const tbody=document.querySelector('#monthlyTable tbody'); if(!tbody) return; tbody.innerHTML='';
+      const base=byId('baseCcy')?.value||'SGD';
+      const months=Object.keys(state.monthlyTotals||{}).sort();
+      const rates=await fetchRates().catch(()=>({SGD:1, INR:60, USD:0.73}));
+      months.forEach(m=>{
+        const cats=state.monthlyTotals[m];
+        Object.keys(cats).forEach(cat=>{
+          const entry=cats[cat]; // {SGD, INR, fx}
+          const amtInSGD = (Number(entry.SGD||0)) + (Number(entry.INR||0))/(Number(entry.fx||60));
+          const totalBase = amtInSGD * (rates[base]||1);
+          const tr=document.createElement('tr');
+          tr.innerHTML=`<td>${m}</td><td>${cat}</td><td class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(totalBase)}</td>`;
+          tbody.appendChild(tr);
+        });
+      });
+    }
+
+    function refresh(){ const s=load(); renderKPIs(s); renderLoans(s); renderAccounts(s); renderInvestments(s); renderCrypto(s); renderTransactions(s); renderCategories(s); hydrateAccountSelects(); }
+
+    // ---------- Loans CRUD ----------
+    function addLoan(){ const borrower=byId('borrower').value.trim(); const currency=byId('currency').value; const principal=Number(byId('principal').value||0); const apr=Number(byId('apr').value||0); const startDate=byId('startDate').value||todayISO(); const notes=byId('notes').value.trim(); if(!borrower||!principal||principal<=0) return alert('Enter borrower and positive principal.'); if(!['INR','SGD'].includes(currency)) return alert('Currency must be INR or SGD.'); const s=load(); const loan={ id:uid(), borrower,currency,apr,startDate,notes,balance:principal,totalRepaid:0,totalInterest:0,lastCalcDate:startDate,closed:false,createdAt:Date.now(), txns:[{type:'create',date:startDate,amount:principal,balanceAfter:principal,note:notes}] }; s.loans.push(loan); save(s); ['borrower','principal','apr','notes'].forEach(id=>byId(id).value=''); byId('startDate').value=''; refresh(); }
+    function toggleCloseLoan(id){ const s=load(); const l=s.loans.find(x=>x.id===id); if(!l) return; l.closed=!l.closed; save(s); refresh(); }
+    function deleteLoan(id){ if(!confirm('Delete this loan permanently?')) return; const s=load(); s.loans=s.loans.filter(l=>l.id!==id); save(s); refresh(); }
+    function viewHistory(loanId){
+      const s=load(); const l=s.loans.find(x=>x.id===loanId); if(!l) return;
+      const lines=[`Borrower: ${l.borrower}`,`Currency: ${l.currency}`,`APR: ${l.apr}%`,`Start: ${l.startDate}`,`Balance: ${fmt(l.balance,l.currency)}`,`Total Repaid: ${fmt(l.totalRepaid,l.currency)}`,`Interest Collected: ${fmt(l.totalInterest,l.currency)}`,``,`Transactions:`];
+      l.txns.forEach(t=>{
+        if(t.type==='create')  lines.push(` - [${t.date}] CREATE  ${fmt(t.amount,l.currency)} → Bal ${fmt(t.balanceAfter,l.currency)}`);
+        if(t.type==='payment') lines.push(` - [${t.date}] PAY     ${fmt(t.amount,l.currency)} (int ${fmt(t.interestApplied,l.currency)}, prin ${fmt(t.principalApplied,l.currency)}) → Bal ${fmt(t.balanceAfter,l.currency)}`);
+        if(t.type==='topup')   lines.push(` - [${t.date}] TOPUP   ${fmt(t.amount,l.currency)} → Bal ${fmt(t.balanceAfter,l.currency)}`);
+      });
+      alert(lines.join('\n'));
+    }
+
+    // ---------- Loan Payments ----------
+    let currentLoanId=null;
+    function openPayModal(id){ currentLoanId=id; byId('payDate').value=todayISO(); byId('payAmount').value=''; byId('payPreview').textContent='—'; byId('confirmPayBtn').disabled=true; byId('payModal').showModal(); }
+    function closePayModal(){ byId('payModal').close(); }
+    function openTopupModal(id){ currentLoanId=id; byId('topupDate').value=todayISO(); byId('topupAmount').value=''; byId('topupModal').showModal(); }
+    function closeTopupModal(){ byId('topupModal').close(); }
+    function previewPayment(){ const s=load(); const l=s.loans.find(x=>x.id===currentLoanId); if(!l) return; const date=byId('payDate').value||todayISO(); const amount=Number(byId('payAmount').value||0); if(amount<=0){ byId('payPreview').textContent='Enter a positive amount.'; byId('confirmPayBtn').disabled=true; return;} const {days,interest}=computeAccruedInterest(l,date); const intRounded=Math.max(0,Number(interest.toFixed(2))); if(amount<intRounded){ byId('payPreview').innerHTML=`Accrued interest for ${days} day(s): <b>${fmt(intRounded,l.currency)}</b><br>Payment is less than accrued interest. Principal will not reduce.`; } else { const toInterest=intRounded; const toPrincipal=amount-toInterest; const newBal=Math.max(0, Number((l.balance-toPrincipal).toFixed(2))); byId('payPreview').innerHTML=`Accrued interest for ${days} day(s): <b>${fmt(toInterest,l.currency)}</b><br>→ Interest: <b>${fmt(toInterest,l.currency)}</b><br>→ Principal: <b>${fmt(toPrincipal,l.currency)}</b><br>New principal balance: <b>${fmt(newBal,l.currency)}</b>`; } byId('confirmPayBtn').disabled=false; }
+    function confirmPayment(){ const s=load(); const l=s.loans.find(x=>x.id===currentLoanId); if(!l) return; const date=byId('payDate').value||todayISO(); const amount=Number(byId('payAmount').value||0); if(amount<=0) return alert('Enter a positive amount'); const {interest}=computeAccruedInterest(l,date); const intRounded=Math.max(0,Number(interest.toFixed(2))); let toInterest=Math.min(amount,intRounded), toPrincipal=Math.max(0,amount-toInterest); l.totalInterest=Number((Number(l.totalInterest)+toInterest).toFixed(2)); l.totalRepaid=Number((Number(l.totalRepaid)+toPrincipal).toFixed(2)); l.balance=Number((Number(l.balance)-toPrincipal).toFixed(2)); if(l.balance<0) l.balance=0; l.lastCalcDate=date; l.txns.push({type:'payment',date,amount,interestApplied:toInterest,principalApplied:toPrincipal,balanceAfter:l.balance}); save(s); refresh(); closePayModal(); }
+    function confirmTopup(){ const s=load(); const l=s.loans.find(x=>x.id===currentLoanId); if(!l) return; const date=byId('topupDate').value||todayISO(); const amount=Number(byId('topupAmount').value||0); if(amount<=0) return alert('Enter a positive amount.'); l.balance=Number((Number(l.balance)+amount).toFixed(2)); l.txns.push({type:'topup',date,amount,balanceAfter:l.balance}); save(s); refresh(); closeTopupModal(); }
+
+    // ---------- Accounts CRUD & CC Pay ----------
+    function addOrUpdateAccount(){ const type=byId('acctType').value; const name=byId('acctName').value.trim(); const currency=byId('acctCcy').value; const amount=Number(byId('acctBal').value||0); const note=byId('acctNote').value.trim(); if(!name) return alert('Enter account name'); const s=load(); let acct=s.accounts.find(a=>a.name.toLowerCase()===name.toLowerCase()); if(!acct){ acct={id:uid()}; s.accounts.push(acct);} Object.assign(acct,{type,name,currency,amount,note}); save(s); ['acctName','acctBal','acctNote'].forEach(id=>byId(id).value=''); renderAccounts(s); hydrateAccountSelects(); renderKPIs(s); }
+    function editAccount(id){ const s=load(); const a=s.accounts.find(x=>x.id===id); if(!a) return; byId('acctType').value=a.type; byId('acctName').value=a.name; byId('acctCcy').value=a.currency; byId('acctBal').value=a.amount; byId('acctNote').value=a.note||''; }
+    function deleteAccount(id){ if(!confirm('Delete account?')) return; const s=load(); s.accounts=s.accounts.filter(a=>a.id!==id); save(s); refresh(); }
+
+    function openCCPayModal(){ hydrateAccountSelects(); byId('ccDate').value=todayISO(); byId('ccAmount').value=''; byId('ccPayModal').showModal(); }
+    function closeCCPayModal(){ byId('ccPayModal').close(); }
+    function hydrateAccountSelects(){
+      const s=load(); const accSel=byId('tAccount'), tgtSel=byId('tTarget'), fromSel=byId('ccFrom'), cardSel=byId('ccCard');
+      const accounts=s.accounts||[]; const bank=accounts.filter(a=>a.type!=='Credit Card'); const cards=accounts.filter(a=>a.type==='Credit Card');
+      const fill=(sel,arr)=>{ if(!sel) return; sel.innerHTML=''; arr.forEach(a=>{ const opt=document.createElement('option'); opt.value=a.id; opt.textContent=`${a.name} (${a.currency})`; sel.appendChild(opt); }); };
+      fill(accSel, accounts); fill(tgtSel, accounts); fill(fromSel, bank); fill(cardSel, cards);
+      const catSel=byId('tCategory'); if(catSel){ catSel.innerHTML=''; (s.categories||[]).forEach(c=>{ const o=document.createElement('option'); o.textContent=c; catSel.appendChild(o); }); }
+    }
+    function payCreditCard(){
+      const s=load(); const fromId=byId('ccFrom').value; const cardId=byId('ccCard').value; const date=byId('ccDate').value||todayISO(); const amount=Number(byId('ccAmount').value||0);
+      if(!fromId||!cardId||amount<=0) return alert('Select accounts and enter a positive amount.');
+      const from=s.accounts.find(a=>a.id===fromId); const card=s.accounts.find(a=>a.id===cardId);
+      if(!from||!card) return; if(from.currency!==card.currency) return alert('For now, pay within same currency.'); if(card.type!=='Credit Card') return alert('Target must be a Credit Card');
+      if(from.amount<amount) return alert('Insufficient funds');
+      from.amount=Number((from.amount-amount).toFixed(2)); card.amount=Number((card.amount-amount).toFixed(2)); if(card.amount<0) card.amount=0;
+      s.transactions.push({ id:uid(), date, type:'Transfer', account:from.id, accountName:from.name, target:card.id, targetName:card.name, category:'CC Payment', amount, currency:from.currency, note:'Credit card payment' });
+      save(s); closeCCPayModal(); refresh();
+    }
+
+    // ---------- Savings/Investments Top-up from Account ----------
+    let currentInvId=null;
+    function openInvTopupModal(invId){
+      currentInvId=invId; const s=load(); const inv=s.investments.find(i=>i.id===invId); if(!inv) return;
+      const sel=byId('invFrom'); if(sel){ sel.innerHTML='';
+        const bank=(s.accounts||[]).filter(a=>a.type!=='Credit Card' && a.currency===inv.currency);
+        bank.forEach(a=>{ const opt=document.createElement('option'); opt.value=a.id; opt.textContent=`${a.name} (${a.currency}) - ${fmt(a.amount,a.currency)}`; sel.appendChild(opt); });
+      }
+      byId('invDate').value=todayISO(); byId('invAmount').value='';
+      byId('invTopupModal').showModal();
+    }
+    function closeInvTopupModal(){ byId('invTopupModal').close(); }
+    function confirmInvTopup(){
+      const s=load(); const inv=s.investments.find(i=>i.id===currentInvId); if(!inv) return;
+      const fromId=byId('invFrom').value; const from=s.accounts.find(a=>a.id===fromId); const date=byId('invDate').value||todayISO(); const amount=Number(byId('invAmount').value||0);
+      if(!fromId||amount<=0) return alert('Select account and enter positive amount');
+      if(from.currency!==inv.currency) return alert('Account and investment currency must match');
+      if(from.amount<amount) return alert('Insufficient funds');
+      from.amount=Number((from.amount-amount).toFixed(2));
+      inv.amount=Number((Number(inv.amount||0)+amount).toFixed(2));
+      s.transactions.push({ id:uid(), date, type:'Expense', account:from.id, accountName:from.name, category:'Savings', amount, currency:from.currency, note:`Top-up ${inv.name}` });
+      save(s); closeInvTopupModal(); refresh();
+    }
+
+    // ---------- Investments CRUD ----------
+    function addOrUpdateInvestment() {
+      const name = byId('invName').value.trim();
+      const currency = byId('invCcy').value;
+      const amount = Number(byId('invAmt').value || 0);
+      const mode = byId('invMode').value.trim();
+      const note = byId('invNote').value.trim();
+      if (!name) return alert('Enter investment name');
+      const s = load();
+      let inv = s.investments.find(i => i.name.toLowerCase() === name.toLowerCase());
+      if (!inv) { inv = { id: uid() }; s.investments.push(inv); }
+      Object.assign(inv, { name, currency, amount, mode, note });
+      save(s); refresh();
+      ['invName','invAmt','invMode','invNote'].forEach(id => byId(id).value='');
+    }
+    function editInvestment(id) {
+      const s = load();
+      const i = s.investments.find(x => x.id === id);
+      if (!i) return;
+      byId('invName').value = i.name;
+      byId('invCcy').value = i.currency;
+      byId('invAmt').value = i.amount;
+      byId('invMode').value = i.mode || '';
+      byId('invNote').value = i.note || '';
+    }
+    function deleteInvestment(id) {
+      if (!confirm('Delete investment?')) return;
+      const s = load();
+      s.investments = s.investments.filter(i => i.id !== id);
+      save(s); refresh();
+    }
+
+    // ---------- Crypto CRUD ----------
+    async function addOrUpdateCrypto() {
+      const ticker = byId('cTicker').value.trim().toUpperCase();
+      const quantity = Number(byId('cQty').value || 0);
+      const buyPrice = Number(byId('cBuy').value || 0);
+      const currency = byId('cCcy').value;
+      const note = byId('cNote').value.trim();
+      if (!ticker || quantity<=0) return alert('Enter ticker and positive quantity');
+      const s = load();
+      let c = s.crypto.find(x => x.ticker === ticker && x.currency === currency);
+      if (!c) { c = { id: uid(), ticker }; s.crypto.push(c); }
+      Object.assign(c, { ticker, quantity, buyPrice, currency, note });
+      const prices = await fetchCryptoPrices([ticker]);
+      const id = COINGECKO_IDS[ticker];
+      if (id && prices[id]) { c.lastPrice = { SGD: prices[id].sgd || 0, INR: prices[id].inr || 0, USD: prices[id].usd || 0 }; }
+      save(s); refresh();
+      ['cTicker','cQty','cBuy','cNote'].forEach(id=>byId(id).value='');
+    }
+    function editCrypto(id){ const s=load(); const c=s.crypto.find(x=>x.id===id); if(!c) return; byId('cTicker').value=c.ticker; byId('cQty').value=c.quantity; byId('cBuy').value=c.buyPrice; byId('cCcy').value=c.currency; byId('cNote').value=c.note||''; }
+    function deleteCrypto(id){ if(!confirm('Delete crypto holding?')) return; const s=load(); s.crypto=s.crypto.filter(x=>x.id!==id); save(s); refresh(); }
+
+    // ---------- Transactions ----------
+    function onTxnTypeChange(){ const type=byId('tType').value; const wrapT=byId('tTargetWrap'); const wrapC=byId('tCategoryWrap'); if(type==='Transfer'){ wrapT.style.display='block'; wrapC.style.display='none'; } else { wrapT.style.display='none'; wrapC.style.display='block'; } }
+    function addTransaction(){
+      const s=load();
+      const date=byId('tDate').value||todayISO();
+      const type=byId('tType').value;
+      const accId=byId('tAccount').value;
+      const tgtId=byId('tTarget').value;
+      const cat=byId('tCategory').value;
+      const amount=Number(byId('tAmount').value||0);
+      const note=byId('tNote').value.trim();
+      if(!accId||amount<=0) return alert('Select account and positive amount');
+      const acc=s.accounts.find(a=>a.id===accId); if(!acc) return;
+      if(type!=='Transfer' && !cat) return alert('Pick a category');
+
+      if(type==='Expense'){
+        if(acc.type==='Credit Card'){ acc.amount=Number((acc.amount+amount).toFixed(2)); }
+        else { if(acc.amount<amount) return alert('Insufficient funds'); acc.amount=Number((acc.amount-amount).toFixed(2)); }
+        s.transactions.push({id:uid(), date, type, account:acc.id, accountName:acc.name, category:cat, amount, currency:acc.currency, note});
+      } else if(type==='Income'){
+        if(acc.type==='Credit Card'){ return alert('Income to credit card not supported. Use Transfer to bank.'); }
+        acc.amount=Number((acc.amount+amount).toFixed(2));
+        s.transactions.push({id:uid(), date, type, account:acc.id, accountName:acc.name, category:cat, amount, currency:acc.currency, note});
+      } else if(type==='Transfer'){
+        if(!tgtId) return alert('Select target account'); const tgt=s.accounts.find(a=>a.id===tgtId); if(!tgt) return;
+        if(acc.currency!==tgt.currency) return alert('For now, transfer within same currency');
+        // debit source
+        if(acc.type==='Credit Card'){ acc.amount=Number((acc.amount-amount).toFixed(2)); if(acc.amount<0) acc.amount=0; } else { if(acc.amount<amount) return alert('Insufficient funds'); acc.amount=Number((acc.amount-amount).toFixed(2)); }
+        // credit target
+        if(tgt.type==='Credit Card'){ tgt.amount=Number((tgt.amount+amount).toFixed(2)); } else { tgt.amount=Number((tgt.amount+amount).toFixed(2)); }
+        s.transactions.push({id:uid(), date, type, account:acc.id, accountName:acc.name, target:tgt.id, targetName:tgt.name, category:'Transfer', amount, currency:acc.currency, note});
+      }
+      save(s); renderAccounts(s); renderKPIs(s); renderTransactions(s); hydrateAccountSelects(); ['tAmount','tNote'].forEach(id=>byId(id).value='');
+    }
+    function deleteTxn(id){ const s=load(); s.transactions=s.transactions.filter(t=>t.id!==id); save(s); renderTransactions(s); }
+    function closeMonth(){
+      const s=load(); const ym=byId('closeMonth').value; if(!ym) return alert('Pick a month (YYYY-MM)');
+      const base=byId('baseCcy')?.value||'SGD';
+      const monthTx=s.transactions.filter(t=> t.date?.startsWith(ym) && t.type==='Expense');
+      if(!monthTx.length) return alert('No expenses for that month.');
+      const fxSnapshot = s.cache?.rates?.data?.INR || 60;
+      if(!s.monthlyTotals[ym]) s.monthlyTotals[ym]={};
+      monthTx.forEach(t=>{
+        const cat=t.category||'Others';
+        if(!s.monthlyTotals[ym][cat]) s.monthlyTotals[ym][cat]={SGD:0, INR:0, fx: fxSnapshot};
+        s.monthlyTotals[ym][cat][t.currency]=(Number(s.monthlyTotals[ym][cat][t.currency]||0)+Number(t.amount||0));
+      });
+      s.transactions = s.transactions.filter(t=> !t.date?.startsWith(ym)); save(s);
+      renderCategories(s); renderTransactions(s); alert('Month closed and transactions cleared.');
+    }
+
+    let deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = byId('installBtn');
+      if (btn) btn.style.display = 'inline-block';
+    });
+
+    byId('installBtn')?.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      byId('installBtn').style.display = 'none';
+    });
+    
+    // ---------- Settings / PWA ----------
+    if('serviceWorker' in navigator && (location.protocol.startsWith('https') || location.hostname==='localhost' || location.hostname==='127.0.0.1')){
+      window.addEventListener('load', ()=> navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+    }
+
+    // ---------- Wiring ----------
+    document.addEventListener('DOMContentLoaded',()=>{
+      // theme init
+      initTheme();
+      // mobile menu
+      const menuBtn=document.getElementById('menuBtn'); const sidebar=document.getElementById('appSidebar'); const backdrop=document.getElementById('backdrop');
+      const toggleMenu=(open)=>{ const isOpen = open ?? !sidebar.classList.contains('open'); if(isOpen){ sidebar.classList.add('open'); document.body.classList.add('menu-open'); backdrop.classList.add('show'); menuBtn.setAttribute('aria-expanded','true'); } else { sidebar.classList.remove('open'); document.body.classList.remove('menu-open'); backdrop.classList.remove('show'); menuBtn.setAttribute('aria-expanded','false'); } };
+      menuBtn.addEventListener('click',()=>toggleMenu());
+      backdrop.addEventListener('click',()=>toggleMenu(false));
+
+      // theme toggle
+      byId('themeToggle').addEventListener('click', toggleTheme);
+
+      // topbar
+      byId('exportBtn').addEventListener('click',()=>{ const blob=new Blob([localStorage.getItem(LS_KEY)||'{}'],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`wealthflow-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
+      byId('importBtn').addEventListener('click',()=>byId('importFile').click());
+      byId('importFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev=>{ try{ const obj=JSON.parse(ev.target.result); if(!obj || typeof obj!=='object') throw new Error('Invalid file'); if(!obj.loans) obj.loans=[]; if(!obj.accounts) obj.accounts=[]; if(!obj.investments) obj.investments=[]; if(!obj.crypto) obj.crypto=[]; if(!obj.transactions) obj.transactions=[]; if(!obj.categories) obj.categories=['Food','Transport','Bills','Shopping','Health','Education','Travel','Entertainment','Fees','Others']; if(!obj.monthlyTotals) obj.monthlyTotals={}; if(!obj.cache) obj.cache={rates:null,prices:null}; localStorage.setItem(LS_KEY, JSON.stringify(obj)); refresh(); alert('Import successful.'); }catch(err){ alert('Import failed: '+err.message); } }; r.readAsText(f); });
+      byId('resetBtn').addEventListener('click',()=>{ if(!confirm('Erase all local data?')) return; localStorage.removeItem(LS_KEY); location.reload(); });
+
+      // accounts
+      byId('addAcctBtn').addEventListener('click',addOrUpdateAccount);
+      byId('openPayCCBtn').addEventListener('click',openCCPayModal);
+      byId('confirmCCPayBtn').addEventListener('click',payCreditCard);
+
+      // investments
+      byId('addInvBtn').addEventListener('click',addOrUpdateInvestment);
+      byId('confirmInvTopupBtn').addEventListener('click',confirmInvTopup);
+
+      // crypto
+      byId('addCryptoBtn').addEventListener('click',addOrUpdateCrypto);
+      byId('refreshPricesBtn').addEventListener('click',async()=>{ const s=load(); const tickers=[...new Set((s.crypto||[]).map(c=>c.ticker))]; const prices=await fetchCryptoPrices(tickers); s.crypto.forEach(c=>{ const id=COINGECKO_IDS[c.ticker]; if(id && prices[id]) c.lastPrice={SGD:prices[id].sgd||0, INR:prices[id].inr||0, USD:prices[id].usd||0}; }); save(s); renderCrypto(s); renderKPIs(s); });
+
+      // loans
+      byId('addLoanBtn').addEventListener('click',addLoan);
+      byId('sortSelect')?.addEventListener('change',refresh);
+      byId('previewBtn').addEventListener('click',previewPayment);
+      byId('confirmPayBtn').addEventListener('click',confirmPayment);
+      byId('confirmTopupBtn').addEventListener('click',confirmTopup);
+
+      // transactions
+      byId('tType').addEventListener('change',onTxnTypeChange);
+      byId('addTxnBtn').addEventListener('click',addTransaction);
+      byId('closeMonthBtn').addEventListener('click',closeMonth);
+
+      // dashboard controls
+      byId('baseCcy').addEventListener('change',()=>{ renderKPIs(load()); renderCategories(load()); renderCrypto(load()); });
+      byId('includeLending').addEventListener('change',()=>renderKPIs(load()));
+
+      // init
+      navTo('dashboard', document.querySelector('.nav button[data-view="dashboard"]'));
+      refresh();
+      byId('tDate').value=todayISO();
+      byId('ccDate').value=todayISO();
+      hydrateAccountSelects();
+    });
+  </script>
+  <div id="backdrop" class="backdrop" tabindex="-1" aria-hidden="true"></div>
+</body>
+</html>
