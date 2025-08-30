@@ -7,7 +7,7 @@
   Last updated: 2025-08-29 23:29 (local)
 */
 
-const CACHE = 'loan-tracker-cache-v2';
+const CACHE = 'loan-tracker-cache-v3';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './icon-192.png', './icon-512.png', './icon.svg', './icon-maskable.svg',
