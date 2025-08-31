@@ -2,7 +2,7 @@
 
 WealthFlow is a lightweight, privacy‑first Progressive Web App (PWA) to track your loans, accounts, savings & investments, crypto, and day‑to‑day transactions — all stored locally in your browser. No backend, no sign‑in. Works offline and can be installed to your home screen.
 
-Current local date/time: 2025-08-30 00:04
+APP :[WealthFlow Live ](https://nagaxking.github.io/wealthflow/)
 
 ## What’s new (UI refresh)
 - Modernized visual design with Inter font, rounded cards, subtle elevation and hover motion
@@ -10,16 +10,26 @@ Current local date/time: 2025-08-30 00:04
 - Polished buttons (gradients, shadows), improved focus states for accessibility
 - Table row hovers and refined spacing for a crisper, “rich” feel
 - Mobile drawer and safe‑area polish maintained
+- Mobile app feel: fixed bottom navigation on phones for quick access to Home, Accounts, Lending, Transactions, Settings
+- Number fields now accept only numeric characters (blocks e/E/+/-; shows numeric or decimal keypad on mobile)
+- New views: 🎯 Goals (savings goals + burn-down) and 📈 Reports (12-month trend, category drill-down, weekday heatmap)
+- Budgets & Envelopes with optional rollover across months
+- Advanced loan terms: variable APR schedule, interest-only period, and optional late fee rules
+- Crypto: FIFO/LIFO lot method, realized and unrealized P/L in base currency
+- Security Lock: optional 10-minute idle lock and manual Lock button (password hash stored locally via SHA-256)
 
 ## Highlights
 - Single‑page app with clean, responsive UI (mobile‑friendly with slide‑out sidebar)
 - PWA: installable, offline‑first caching, standalone mode
 - Full local data ownership (localStorage). Import/Export your data as JSON
 - Multi‑asset tracking: Cash/Bank/Credit Cards, manual Savings/Investments, Crypto holdings
-- Lending module with daily interest accrual (Actual/365) and history
-- Transactions with categories and a simple month‑close workflow that aggregates monthly totals
+- Lending module with daily interest accrual (Actual/365), variable terms, and history
+- Transactions with categories, budgets/envelopes, and a month‑close workflow aggregating monthly totals
+- Savings Goals with monthly requirement and burn‑down projection
+- Reports: 12‑month expense trend, category drill‑down, weekday heatmap
+- Crypto: live prices via CoinGecko (2‑minute cache), FIFO/LIFO lot method, realized/unrealized P/L
+- Security Lock (idle + manual) with local SHA‑256 password hash
 - Multi‑currency support (SGD, INR, USD base display) with live FX snapshot via Frankfurter API
-- Live crypto prices via CoinGecko (2‑minute cache)
 - Light/Dark theme toggle with automatic system detection
 
 ## Tech stack
@@ -67,27 +77,27 @@ Navigation is handled within `index.html` using buttons in the left sidebar. Eac
 
 2. Accounts (view-accounts)
    - Track Cash, Bank, and Credit Card balances
-   - Fields: Type, Name, Currency (INR/SGD), Balance/Limit Used, Note
+   - Fields: Type, Name, Currency (INR/SGD/USD), Balance/Limit Used, Note
    - Actions: Add/Update, Edit, Delete
    - Pay Credit Card: modal to transfer funds from Cash/Bank to a Credit Card (same currency requirement)
 
 3. Savings & Investments (view-investments)
    - Manual entries for savings/investments
-   - Fields: Asset Name, Currency (INR/SGD), Amount, Mode/Type (SSB/FD/ETF/…), Note
+   - Fields: Asset Name, Currency (INR/SGD/USD), Amount, Mode/Type (SSB/FD/ETF/…), Note
    - Actions: Add/Update, Edit, Delete
    - Increase (Top‑up) via modal: move funds from a matching‑currency Cash/Bank account into the investment; creates an Expense transaction with category "Savings"
 
 4. Crypto (view-crypto)
    - Track crypto holdings with live price lookup (CoinGecko)
-   - Fields: Ticker (e.g., BTC, ETH, SOL), Quantity, Buy Price (per unit), Currency (INR/SGD), Note
+   - Fields: Ticker (e.g., BTC, ETH, SOL), Quantity, Buy Price (per unit), Currency (INR/SGD/USD), Note
    - Actions: Add/Update, Edit, Delete, Refresh Prices
-   - Shows Last Price (SGD/INR), Value (Base), and simple P/L (Base)
+   - Shows Last Price (SGD/INR/USD), Value (Base), FIFO/LIFO lot method, and realized | unrealized P/L (Base)
 
 5. Lending (view-loans)
-   - Create and manage simple loans with daily interest accrual (Actual/365) on remaining principal
-   - New Loan fields: Borrower, Currency (INR/SGD), Principal, APR %, Start Date, Notes
+   - Create and manage loans with daily interest accrual (Actual/365) on remaining principal
+   - New Loan fields: Borrower, Currency (INR/SGD/USD), Principal, APR %, Start Date, Notes
    - Loans table shows: Borrower, Currency, APR, Principal Balance, Repaid, Interest, Last Txn, Status
-   - Actions per loan: Payment (modal with interest/principal breakdown preview), Top‑up, Close/Reopen, History (alert), Delete
+   - Actions per loan: Payment (modal with interest/principal breakdown preview), Top‑up, Terms (variable APR, interest‑only until, optional late fee), Close/Reopen, History, Delete
 
 6. Transactions (view-transactions)
    - Record Expense, Income, or Transfer between accounts
@@ -98,27 +108,40 @@ Navigation is handled within `index.html` using buttons in the left sidebar. Eac
 7. Categories (view-categories)
    - Manage list of categories (e.g., Food, Transport, Bills, …)
    - See Monthly Totals table (aggregated at month close) displayed in selected Base currency using stored FX snapshot
+   - Budgets & Envelopes: set monthly budgets per category (stored in SGD, converted for display), optional rollover of unspent amounts from previous month
 
-8. Settings & PWA (view-settings)
-   - Instructions for PWA install and placement of manifest/service worker/icons
-   - Shows sample manifest and service worker snippets
+8. Goals (view-goals)
+   - Define savings goals with currency, target amount, current amount, and a target date
+   - Shows months remaining and required monthly top‑up
+   - Burn‑down projection table to visualize progress towards target
+
+9. Reports (view-reports)
+   - Expense Trends: last 12 months aggregated totals (based on closed months)
+   - Category Drill‑down: month‑by‑month totals for a selected category
+   - Weekday Heatmap: relative expense intensity by weekday (last 90 days)
+
+10. Settings (view-settings)
+   - Security Lock: enable 10‑minute idle lock and set/clear password (SHA‑256 hash stored locally)
+   - Data Management: Import/Export JSON, Reset All (erases local data)
 
 ### Top bar controls (always visible)
 - Theme toggle (Light/Dark)
-- Export JSON — downloads your current local data as a JSON file
-- Import JSON — restore data from a previously exported JSON file
-- Reset All — clears all local data (irreversible)
+- Lock — manually locks the app when a password is set
+- Install App — appears when the browser allows PWA installation
 
 ## Data model & storage
 - Stored under localStorage key `loan-tracker:v3`
 - Structure (simplified):
-  - loans: [{ id, borrower, currency, apr, startDate, notes, balance, totalRepaid, totalInterest, lastCalcDate, closed, createdAt, txns: [...] }]
+  - loans: [{ id, borrower, currency, apr, startDate, notes, balance, totalRepaid, totalInterest, lastCalcDate, closed, createdAt, terms: { rateSchedule:[{from, apr}], interestOnlyUntil, late:{enabled, amount, graceDays} }, txns:[...] }]
   - accounts: [{ id, type, name, currency, amount, note }]
   - investments: [{ id, name, currency, amount, mode, note }]
-  - crypto: [{ id, ticker, quantity, buyPrice, currency, note, lastPrice: { SGD, INR, USD } }]
+  - crypto: [{ id, ticker, quantity, buyPrice, currency, note, lots:[{qty, price, date}], realizedPL, lastPrice: { SGD, INR, USD } }]
   - transactions: [{ id, date, type, account, accountName, target, targetName, category, amount, currency, note }]
   - categories: ["Food", "Transport", ...]
-  - monthlyTotals: { "YYYY-MM": { Category: { SGD, INR, fx } } }
+  - monthlyTotals: { "YYYY-MM": { Category: { SGD, INR, USD, fx:{INR, USD} } } }
+  - budgets: { "YYYY-MM": { Category: Number (stored in SGD) } }
+  - goals: [{ id, name, currency, target, current, targetDate }]
+  - settings: { lockEnabled, rollover, lotMethod }
   - cache: { rates: { ts, data }, prices: { [ids]: { ts, data } } }
 
 Notes:

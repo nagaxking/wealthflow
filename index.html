@@ -29,6 +29,7 @@
   <style>
     :root{
       /* default to dark for backward compatibility; will be overridden by [data-theme] */
+      --bottom-nav-h: 64px;
     }
     :root[data-theme="dark"]{
       --bg:linear-gradient(180deg,#0a0f1d 0%,#0f172a 100%);
@@ -98,7 +99,10 @@
     @media(max-width:980px){ .layout > main{overflow:auto;-webkit-overflow-scrolling:touch} }
     .spacer{height:16px}
     @supports (padding: env(safe-area-inset-bottom)){
-      main{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+      main{padding-bottom:calc(var(--bottom-nav-h) + 18px + env(safe-area-inset-bottom))}
+    }
+    @supports not (padding: env(safe-area-inset-bottom)){
+      @media(max-width:980px){ main{padding-bottom:calc(var(--bottom-nav-h) + 18px)} }
     }
 
     /* iOS PWA safe-area adjustments to prevent topbar/content underlap with camera/time bar */
@@ -108,6 +112,16 @@
       /* Ensure mobile drawer content isn't hidden under the notch */
       @media(max-width:980px){ .sidebar{padding-top:calc(14px + env(safe-area-inset-top))} }
     }
+
+    /* Bottom mobile nav */
+    .bottom-nav{position:fixed;left:0;right:0;bottom:0;height:var(--bottom-nav-h);display:none;grid-template-columns:repeat(5,1fr);align-items:stretch;background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18));backdrop-filter:saturate(180%) blur(10px);border-top:1px solid var(--border);z-index:950}
+    .bottom-nav button{all:unset;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer}
+    .bottom-nav button .icon{font-size:18px;line-height:1}
+    .bottom-nav button.active{color:var(--text)}
+    @supports (padding: env(safe-area-inset-bottom)){
+      .bottom-nav{padding-bottom:env(safe-area-inset-bottom)}
+    }
+    @media(max-width:980px){ .bottom-nav{display:grid} }
 
         /* Mobile menu controls */
         #menuBtn{display:inline-flex;align-items:center;gap:8px}
@@ -144,6 +158,9 @@
     :focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:10px}
     th{background:transparent}
     tbody tr:hover{background:rgba(59,130,246,.06)}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-variant-numeric: tabular-nums;}
+    .chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;border:1px solid var(--border);background:linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));box-shadow:inset 0 -1px 0 rgba(255,255,255,0.06)}
+    input:focus, select:focus, textarea:focus{box-shadow:0 0 0 4px rgba(59,130,246,0.15)}
     /* nicer scrollbars (supported browsers only) */
     ::-webkit-scrollbar{height:10px;width:10px}
     ::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px}
@@ -162,8 +179,10 @@
         <button data-view="loans" onclick="navTo('loans', this)">🤝 Lending</button>
         <button data-view="transactions" onclick="navTo('transactions', this)">📒 Transactions</button>
         <button data-view="categories" onclick="navTo('categories', this)">🏷️ Categories</button>
+        <button data-view="goals" onclick="navTo('goals', this)">🎯 Goals</button>
         <div class="muted">System</div>
-        <button data-view="settings" onclick="navTo('settings', this)">⚙️ Settings & PWA</button>
+        <button data-view="reports" onclick="navTo('reports', this)">📈 Reports</button>
+                <button data-view="settings" onclick="navTo('settings', this)">⚙️ Settings</button>
       </div>
     </aside>
 
@@ -172,10 +191,7 @@
         <button id="menuBtn" class="btn ghost" aria-label="Open menu" aria-controls="appSidebar" aria-expanded="false">☰ Menu</button>
         <button id="themeToggle" class="btn ghost" aria-label="Toggle theme">🌓 Theme</button>
         <button id="installBtn" class="btn blue" style="display:none;">Install App</button>
-        <button id="exportBtn" class="btn ghost">Export JSON</button>
-        <input type="file" id="importFile" accept="application/json" style="display:none;" />
-        <button id="importBtn" class="btn ghost">Import JSON</button>
-        <button id="resetBtn" class="btn danger">Reset All</button>
+        <button id="lockBtn" class="btn ghost" aria-label="Lock app">🔒 Lock</button>
       </div>
 
       <!-- DASHBOARD -->
@@ -232,7 +248,7 @@
           <div class="grid grid-3">
             <div class="field"><label>Type</label><select id="acctType"><option>Cash</option><option>Bank</option><option>Credit Card</option></select></div>
             <div class="field"><label>Name</label><input id="acctName" placeholder="e.g., DBS Multiplier / Cash"/></div>
-            <div class="field"><label>Currency</label><select id="acctCcy"><option>INR</option><option selected>SGD</option></select></div>
+            <div class="field"><label>Currency</label><select id="acctCcy"><option>INR</option><option selected>SGD</option><option>USD</option></select></div>
             <div class="field"><label>Balance / Limit Used</label><input id="acctBal" type="number" step="0.01" placeholder="e.g., 2500"/></div>
             <div class="field"><label>Note</label><input id="acctNote" placeholder="Optional"/></div>
           </div>
@@ -252,7 +268,7 @@
           <h3>Savings & Investments (Manual)</h3>
           <div class="grid grid-3">
             <div class="field"><label>Asset Name</label><input id="invName" placeholder="e.g., SSB Aug 2025 / FD 6m"/></div>
-            <div class="field"><label>Currency</label><select id="invCcy"><option>INR</option><option selected>SGD</option></select></div>
+            <div class="field"><label>Currency</label><select id="invCcy"><option>INR</option><option selected>SGD</option><option>USD</option></select></div>
             <div class="field"><label>Amount</label><input id="invAmt" type="number" step="0.01" placeholder="e.g., 10000"/></div>
             <div class="field"><label>Mode/Type</label><input id="invMode" placeholder="e.g., SSB / FD / ETF"/></div>
             <div class="field"><label>Note</label><input id="invNote" placeholder="Optional"/></div>
@@ -267,18 +283,21 @@
         <div class="card">
           <div class="row" style="justify-content:space-between;align-items:center;">
             <h3>Crypto Portfolio</h3>
-            <button id="refreshPricesBtn" class="btn ghost">Refresh Prices</button>
+            <div class="row" style="gap:8px;align-items:center;">
+              <button id="refreshPricesBtn" class="btn ghost">Refresh Prices</button>
+              <span class="chip">Lot Method <select id="lotMethodSel"><option>FIFO</option><option>LIFO</option></select></span>
+            </div>
           </div>
           <div class="grid grid-3">
             <div class="field"><label>Ticker</label><input id="cTicker" placeholder="e.g., BTC, ETH, SOL"/></div>
             <div class="field"><label>Quantity</label><input id="cQty" type="number" step="0.00000001"/></div>
             <div class="field"><label>Buy Price (per unit)</label><input id="cBuy" type="number" step="0.0001"/></div>
-            <div class="field"><label>Currency</label><select id="cCcy"><option>INR</option><option selected>SGD</option></select></div>
+            <div class="field"><label>Currency</label><select id="cCcy"><option>INR</option><option selected>SGD</option><option>USD</option></select></div>
             <div class="field"><label>Note/Wallet</label><input id="cNote" placeholder="Optional (e.g., Binance, Ledger)"/></div>
           </div>
-          <div class="row" style="margin-top:10px;"><button id="addCryptoBtn" class="btn primary">Add / Update</button><span class="muted">Live prices via CoinGecko (cached 2 min).</span></div>
+          <div class="row" style="margin-top:10px;"><button id="addCryptoBtn" class="btn primary">Add / Update</button><span class="muted">Buy: enter positive qty with buy price. Sell: enter negative qty with sell price. Live prices via CoinGecko (cached 2 min).</span></div>
           <div style="overflow:auto;margin-top:10px;">
-            <table id="cryptoTable"><thead><tr><th>Ticker</th><th>Qty</th><th>Buy@</th><th>Currency</th><th class="mono">Last Price (SGD/INR)</th><th class="mono">Value (Base)</th><th class="mono">P/L (Base)</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
+            <table id="cryptoTable"><thead><tr><th>Ticker</th><th>Qty</th><th>Avg Cost</th><th>Currency</th><th class="mono">Last Price (SGD/INR/USD)</th><th class="mono">Value (Base)</th><th class="mono">Realized | Unrealized (Base)</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
           </div>
         </div>
       </div>
@@ -289,7 +308,7 @@
           <h3>New Loan</h3>
           <div class="grid grid-3">
             <div class="field"><label>Borrower</label><input id="borrower" placeholder="Name or label"/></div>
-            <div class="field"><label>Currency</label><select id="currency"><option value="INR">INR</option><option value="SGD">SGD</option></select></div>
+            <div class="field"><label>Currency</label><select id="currency"><option value="INR">INR</option><option value="SGD">SGD</option><option value="USD">USD</option></select></div>
             <div class="field"><label>Principal</label><input id="principal" type="number" step="0.01" placeholder="e.g., 10000"/></div>
             <div class="field"><label>Annual Interest %</label><input id="apr" type="number" step="0.01" placeholder="e.g., 12 (0 for no interest)"/></div>
             <div class="field"><label>Start Date</label><input id="startDate" type="date"/></div>
@@ -300,6 +319,7 @@
         <div class="spacer"></div>
         <div class="card"><div class="row" style="justify-content:space-between;align-items:center;"><h3>Loans</h3><span class="chip">Sort by <select id="sortSelect" style="margin-left:6px;"><option value="created_desc">Newest</option><option value="created_asc">Oldest</option><option value="balance_desc">Balance ↓</option><option value="balance_asc">Balance ↑</option><option value="borrower_asc">Borrower A→Z</option></select></span></div>
           <div style="overflow:auto;"><table id="loansTable"><thead><tr><th>Borrower</th><th>Currency</th><th>APR%</th><th>Principal Balance</th><th>Repaid</th><th>Interest</th><th>Last Txn</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+          <div class="muted" style="margin-top:6px;">Tip: Configure variable rates, interest-only periods, and late fees via Terms.</div>
         </div>
       </div>
 
@@ -349,59 +369,115 @@
             </div>
           </div>
         </div>
+        <div class="spacer"></div>
+        <div class="card">
+          <h3>Budgets & Envelopes</h3>
+          <div class="row" style="gap:12px;align-items:end;flex-wrap:wrap;">
+            <div class="field"><label>Month</label><input type="month" id="budgetMonth"></div>
+            <label class="row" style="gap:8px;"><input type="checkbox" id="budgetRollover"> Enable rollover</label>
+            <span class="muted">Budgets are stored in SGD internally and converted for display.</span>
+          </div>
+          <div style="overflow:auto;margin-top:10px;">
+            <table id="budgetTable"><thead><tr><th>Category</th><th class="mono">Budget</th><th class="mono">Spent (month-to-date)</th><th class="mono">Available</th><th>Progress</th></tr></thead><tbody id="budgetBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- GOALS -->
+      <div id="view-goals" class="container view hidden">
+        <div class="card">
+          <h3>Savings Goals</h3>
+          <div class="grid grid-3">
+            <div class="field"><label>Goal Name</label><input id="goalName" placeholder="e.g., Emergency Fund"/></div>
+            <div class="field"><label>Currency</label><select id="goalCcy"><option>INR</option><option selected>SGD</option><option>USD</option></select></div>
+            <div class="field"><label>Target Amount</label><input id="goalTarget" type="number" step="0.01" placeholder="e.g., 10000"/></div>
+            <div class="field"><label>Current Amount</label><input id="goalCurrent" type="number" step="0.01" placeholder="e.g., 1200"/></div>
+            <div class="field"><label>Target Date</label><input id="goalDate" type="date"/></div>
+          </div>
+          <div class="row" style="margin-top:10px;"><button id="addGoalBtn" class="btn primary">Add / Update Goal</button><span class="muted">Shows required monthly top-ups and a simple burn-down projection.</span></div>
+          <div style="overflow:auto;margin-top:10px;">
+            <table id="goalsTable"><thead><tr><th>Goal</th><th>Currency</th><th class="mono">Target</th><th class="mono">Current</th><th>Target Date</th><th class="mono">Months Left</th><th class="mono">Required Monthly</th><th>Actions</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="card">
+          <h3>Goal Burn-down</h3>
+          <div class="row" style="gap:8px;align-items:center;"><label>Goal</label><select id="goalSelect"></select></div>
+          <div id="burndownWrap" style="overflow:auto;margin-top:10px;"></div>
+        </div>
+      </div>
+
+      <!-- REPORTS -->
+      <div id="view-reports" class="container view hidden">
+        <div class="card">
+          <h3>Expense Trends (Last 12 Months)</h3>
+          <canvas id="trendCanvas" width="900" height="260" style="width:100%;height:auto;border:1px solid var(--border);border-radius:12px;background:var(--panel);"></canvas>
+          <div class="muted">Totals based on closed months.</div>
+        </div>
+        <div class="spacer"></div>
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Category Drill-down</h3>
+            <div class="row" style="gap:8px;align-items:center;">
+              <label>Category</label>
+              <select id="reportCat"></select>
+            </div>
+            <div style="margin-top:10px;overflow:auto;">
+              <table><thead><tr><th>Month</th><th class="mono">Total (Base)</th></tr></thead><tbody id="reportCatBody"></tbody></table>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Weekday Heatmap</h3>
+            <div id="heatmap" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">
+            </div>
+            <div class="muted">Intensity by total expenses per weekday (last 90 days).</div>
+          </div>
+        </div>
       </div>
 
       <!-- SETTINGS -->
       <div id="view-settings" class="container view hidden">
         <div class="card">
-          <h3>PWA & Offline</h3>
-          <ol>
-            <li>Place <code>manifest.webmanifest</code>, <code>service-worker.js</code>, and icons (<code>icon-192.png</code>, <code>icon-512.png</code>, <code>apple-touch-icon-180.png</code>) next to this file.</li>
-            <li>Host over HTTPS (GitHub Pages/Netlify/etc.).</li>
-            <li>Open on iOS Safari → Share → <b>Add to Home Screen</b>.</li>
-          </ol>
-          <pre class="muted" style="white-space:pre-wrap">manifest.webmanifest
-{
-  "name": "Loan & Portfolio Tracker",
-  "short_name": "Loans",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
-}
-
-service-worker.js
-const CACHE = 'loan-tracker-cache-v3';
-const ASSETS = [
-  './', './index.html', './manifest.webmanifest',
-  './icon-192.png', './icon-512.png', './apple-touch-icon-180.png'
-];
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
-});
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
-  self.clients.claim();
-});
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
-      const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return res;
-    }).catch(()=>cached))
-  );
-});
-</pre>
+          <h3>Security Lock</h3>
+          <div class="grid grid-3">
+            <div class="field"><label>Enable Lock (10 min idle)</label><label class="row" style="gap:8px;"><input type="checkbox" id="lockEnabled"> Active</label></div>
+            <div class="field"><label>New Password</label><input type="password" id="newPass" placeholder="Set or change password"></div>
+            <div class="field"><label>Confirm Password</label><input type="password" id="newPass2" placeholder="Confirm"></div>
+          </div>
+          <div class="row" style="margin-top:10px;"><button id="savePassBtn" class="btn primary">Save</button><button id="clearPassBtn" class="btn ghost">Clear Password</button><span class="muted">Password hash is stored locally (SHA‑256). Not recoverable.</span></div>
+        </div>
+        <div class="spacer"></div>
+        <div class="card">
+          <h3>Data Management</h3>
+          <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;">
+            <button id="exportBtn" class="btn ghost">Export JSON</button>
+            <input type="file" id="importFile" accept="application/json" style="display:none;" />
+            <button id="importBtn" class="btn ghost">Import JSON</button>
+            <button id="resetBtnSettings" class="btn danger" style="margin-left:auto;">Reset All</button>
+            <span class="muted" style="flex-basis:100%">Erases all locally stored data. This cannot be undone.</span>
+          </div>
         </div>
       </div>
     </main>
   </div>
 
+  <!-- Lock Overlay -->
+  <div id="lockOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:none;z-index:2000;align-items:center;justify-content:center;">
+    <div class="card" style="width:min(420px,92vw);text-align:center;">
+      <h3>🔒 App Locked</h3>
+      <div class="field" style="margin-top:10px;"><label>Password</label><input type="password" id="unlockPass" placeholder="Enter password"></div>
+      <div class="row" style="justify-content:center;margin-top:12px;"><button id="unlockBtn" class="btn primary">Unlock</button></div>
+      <div id="lockMsg" class="muted" style="margin-top:8px;">Inactive for 10 minutes.</div>
+    </div>
+  </div>
+
   <!-- Modals -->
+  <dialog id="historyModal">
+    <div class="modal-header"><strong id="historyHeader">History</strong><button class="btn ghost" onclick="byId('historyModal').close()">✕</button></div>
+    <div class="modal-body" id="historyBody">Loading…</div>
+    <div class="modal-actions"><button class="btn ghost" onclick="byId('historyModal').close()">Close</button></div>
+  </dialog>
+
   <dialog id="payModal">
     <div class="modal-header"><strong>Record Loan Payment</strong><button class="btn ghost" onclick="closePayModal()">✕</button></div>
     <div class="modal-body">
@@ -432,6 +508,21 @@ self.addEventListener('fetch', e => {
       <div class="muted">This will deduct from the selected Cash/Bank and reduce the Credit Card used balance.</div>
     </div>
     <div class="modal-actions"><button class="btn ghost" onclick="closeCCPayModal()">Cancel</button><button class="btn primary" id="confirmCCPayBtn">Pay</button></div>
+  </dialog>
+
+  <dialog id="loanTermsModal">
+    <div class="modal-header"><strong>Loan Terms</strong><button class="btn ghost" onclick="closeTermsModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="muted">Variable-rate schedule (one per line): YYYY-MM-DD, APR%</div>
+      <textarea id="rateSchedule" rows="4" placeholder="2025-01-01, 12\n2025-06-01, 10"></textarea>
+      <div class="grid grid-3">
+        <div class="field"><label>Interest-only until</label><input type="date" id="interestOnlyUntil"></div>
+        <div class="field"><label>Late Fee Amount</label><input type="number" step="0.01" id="lateFeeAmt" placeholder="e.g., 25"></div>
+        <div class="field"><label>Grace Days</label><input type="number" step="1" id="lateGrace" placeholder="e.g., 5"></div>
+      </div>
+      <label class="row" style="gap:8px;"><input type="checkbox" id="lateEnabled"> Enable Late Fee</label>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeTermsModal()">Cancel</button><button class="btn primary" id="saveTermsBtn">Save Terms</button></div>
   </dialog>
 
   <dialog id="invTopupModal">
@@ -485,7 +576,23 @@ self.addEventListener('fetch', e => {
 
     function daysBetween(a,b){ const d1=new Date(a), d2=new Date(b); return Math.max(0, Math.round((d2-d1)/86400000)); }
     const lastActivityDate=loan=>loan.lastCalcDate||loan.startDate;
-    function computeAccruedInterest(loan, asOfDate){ const apr=Number(loan.apr)||0; const days=daysBetween(lastActivityDate(loan), asOfDate); if(apr<=0) return {days,interest:0}; const daily=apr/100/365; return {days, interest:Number(loan.balance)*daily*days}; }
+    function computeAccruedInterest(loan, asOfDate){
+      const start = lastActivityDate(loan); const end = asOfDate;
+      const daysTotal = daysBetween(start, end);
+      let interest = 0; let cursor = new Date(start);
+      const bal = Number(loan.balance)||0;
+      const schedule = (loan.terms?.rateSchedule)||[]; // [{from:'YYYY-MM-DD', apr:Number}]
+      if(!schedule.length){ const apr=Number(loan.apr)||0; const daily=apr/100/365; return {days:daysTotal, interest: bal*daily*daysTotal}; }
+      // ensure sorted by date and append a sentinel
+      const sched = schedule.slice().sort((a,b)=> new Date(a.from)-new Date(b.from));
+      sched.push({from:end, apr:sched.length? sched[sched.length-1].apr : (loan.apr||0)});
+      let i=0;
+      while(i<sched.length){ const from = new Date(sched[i].from); const apr = Number(sched[i].apr)||0; const nextFrom = new Date(sched[Math.min(i+1,sched.length-1)].from);
+        const segStart = cursor>from? cursor: from; const segEnd = nextFrom<new Date(end)? nextFrom: new Date(end);
+        const days = Math.max(0, Math.round((segEnd - segStart)/86400000)); if(days>0 && apr>0){ interest += bal * (apr/100/365) * days; }
+        cursor = segEnd; if(cursor>=new Date(end)) break; i++; }
+      return {days:daysTotal, interest};
+    }
 
     // FX + Prices
     const COINGECKO_IDS={ BTC:'bitcoin', ETH:'ethereum', WBTC:'wrapped-bitcoin', XRP:'ripple', BNB:'binancecoin', SOL:'solana', USDT:'tether', USDC:'usd-coin', MATIC:'matic-network', ADA:'cardano', DOGE:'dogecoin', TRX:'tron'};
@@ -508,10 +615,26 @@ self.addEventListener('fetch', e => {
 
     async function fetchCryptoPrices(tickers){ const s=load(); const ids=tickers.map(t=>COINGECKO_IDS[t.toUpperCase()]).filter(Boolean); if(!ids.length) return {}; const key=ids.sort().join(','); const now=Date.now(); if(s.cache?.prices && s.cache.prices[key] && (now-s.cache.prices[key].ts)<120000) return s.cache.prices[key].data; try{ const url=`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids.join(','))}&vs_currencies=sgd,inr,usd`; const res=await fetch(url); const j=await res.json(); if(!s.cache.prices) s.cache.prices={}; s.cache.prices[key]={ts:now,data:j}; save(s); return j; }catch{return {}} }
 
-    function summarize(state){ const totals={INR:{outstanding:0,repaid:0,interest:0}, SGD:{outstanding:0,repaid:0,interest:0}}; state.loans.forEach(l=>{ const c=totals[l.currency]; c.outstanding+= l.closed?0:Number(l.balance); c.repaid+=Number(l.totalRepaid||0); c.interest+=Number(l.totalInterest||0); }); return totals; }
+    function summarize(state){ const totals={INR:{outstanding:0,repaid:0,interest:0}, SGD:{outstanding:0,repaid:0,interest:0}, USD:{outstanding:0,repaid:0,interest:0}}; state.loans.forEach(l=>{ const c=totals[l.currency]||(totals[l.currency]={outstanding:0,repaid:0,interest:0}); c.outstanding+= l.closed?0:Number(l.balance||0); c.repaid+=Number(l.totalRepaid||0); c.interest+=Number(l.totalInterest||0); }); return totals; }
 
     // ---------- Navigation ----------
-    function navTo(view, btn){ document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden')); byId(`view-${view}`).classList.remove('hidden'); document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active')); if(btn) btn.classList.add('active'); if(view==='transactions') hydrateAccountSelects();
+    function navTo(view, btn){
+      // switch view
+      document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));
+      byId(`view-${view}`).classList.remove('hidden');
+      // left sidebar active
+      document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+      if(btn && btn.closest('.nav')){
+        btn.classList.add('active');
+      } else {
+        const sb=document.querySelector(`.nav button[data-view="${view}"]`);
+        if(sb) sb.classList.add('active');
+      }
+      // bottom nav active
+      document.querySelectorAll('.bottom-nav button').forEach(b=>{
+        if(b.getAttribute('data-view')===view) b.classList.add('active'); else b.classList.remove('active');
+      });
+      if(view==='transactions') hydrateAccountSelects();
       // Close mobile menu after navigation
       if(window.innerWidth<=980){ document.getElementById('appSidebar')?.classList.remove('open'); document.body.classList.remove('menu-open'); const mb=document.getElementById('menuBtn'); if(mb) mb.setAttribute('aria-expanded','false'); document.getElementById('backdrop')?.classList.remove('show'); }
     }
@@ -522,7 +645,7 @@ self.addEventListener('fetch', e => {
       const kpiOutstandingEl=byId('kpiOutstanding'), kpiRepaidEl=byId('kpiRepaid'), kpiInterestEl=byId('kpiInterest');
       const baseSel=byId('baseCcy'), lendChk=byId('includeLending'), fxBadge=byId('fxBadge');
       const base=baseSel?.value||'SGD', includeLending=lendChk?.checked??true;
-      const rates=await fetchRates().catch(()=>({SGD:1, INR:60, USD:0.73})); if(fxBadge) fxBadge.textContent=`1 SGD = ${Number(rates.INR||60).toFixed(2)} INR | ${Number(rates.USD||0.73).toFixed(2)} USD`;
+      const rates=await fetchRates().catch(()=>({SGD:1, INR:60, USD:0.73})); window.__ratesCache=rates; if(fxBadge) fxBadge.textContent=`1 SGD = ${Number(rates.INR||60).toFixed(2)} INR | ${Number(rates.USD||0.73).toFixed(2)} USD`;
       const toBase=(amt,ccy)=>{ amt=Number(amt)||0; const rSgdToCcy=rates[ccy]||1; const rSgdToBase=rates[base]||1; return (amt / rSgdToCcy) * rSgdToBase; };
 
       let assetsBase=0, liabilitiesBase=0;
@@ -546,19 +669,87 @@ self.addEventListener('fetch', e => {
       if(elCry) elCry.textContent = fmtBase(cryptoBase);
       if(elLen) elLen.textContent = fmtBase(lendBase);
 
-      const outParts=[]; if(sums.INR?.outstanding) outParts.push(`INR ${Number(sums.INR.outstanding).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.SGD?.outstanding) outParts.push(`SGD ${Number(sums.SGD.outstanding).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(kpiOutstandingEl) kpiOutstandingEl.textContent=outParts.join('  |  ')||'—';
-      const repParts=[]; if(sums.INR?.repaid) repParts.push(`INR ${Number(sums.INR.repaid).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.SGD?.repaid) repParts.push(`SGD ${Number(sums.SGD.repaid).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(kpiRepaidEl) kpiRepaidEl.textContent=repParts.join('  |  ')||'—';
-      const intParts=[]; if(sums.INR?.interest) intParts.push(`INR ${Number(sums.INR.interest).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.SGD?.interest) intParts.push(`SGD ${Number(sums.SGD.interest).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(kpiInterestEl) kpiInterestEl.textContent=intParts.join('  |  ')||'—';
+      const outParts=[]; if(sums.INR?.outstanding) outParts.push(`INR ${Number(sums.INR.outstanding).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.SGD?.outstanding) outParts.push(`SGD ${Number(sums.SGD.outstanding).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.USD?.outstanding) outParts.push(`USD ${Number(sums.USD.outstanding).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(kpiOutstandingEl) kpiOutstandingEl.textContent=outParts.join('  |  ')||'—';
+      const repParts=[]; if(sums.INR?.repaid) repParts.push(`INR ${Number(sums.INR.repaid).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.SGD?.repaid) repParts.push(`SGD ${Number(sums.SGD.repaid).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.USD?.repaid) repParts.push(`USD ${Number(sums.USD.repaid).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(kpiRepaidEl) kpiRepaidEl.textContent=repParts.join('  |  ')||'—';
+      const intParts=[]; if(sums.INR?.interest) intParts.push(`INR ${Number(sums.INR.interest).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.SGD?.interest) intParts.push(`SGD ${Number(sums.SGD.interest).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(sums.USD?.interest) intParts.push(`USD ${Number(sums.USD.interest).toLocaleString(undefined,{maximumFractionDigits:2})}`); if(kpiInterestEl) kpiInterestEl.textContent=intParts.join('  |  ')||'—';
     }
 
     // ---------- Renders ----------
+    function ensureStores(s){ if(!s.budgets) s.budgets={}; if(!s.settings) s.settings={lockEnabled:false, rollover:false}; if(!('lotMethod' in (s.settings||{}))) { s.settings = Object.assign({lotMethod:'FIFO'}, s.settings); } if(!s.goals) s.goals=[]; save(s); }
+
+    function ymToday(){ return new Date().toISOString().slice(0,7); }
+
+    async function renderBudgets(state){
+      const tbody=document.getElementById('budgetBody'); if(!tbody) return;
+      const base=byId('baseCcy')?.value||'SGD'; const rates=await fetchRates().catch(()=>({SGD:1,INR:60,USD:0.73}));
+      const ym=(byId('budgetMonth')?.value)||ymToday(); const rollover=byId('budgetRollover')?.checked||false;
+      // default rollover from settings
+      if(byId('budgetRollover')) byId('budgetRollover').checked = state.settings?.rollover||false;
+      const cats=state.categories||[]; const budgets=state.budgets[ym]||{}; tbody.innerHTML='';
+      // compute spent this month per category (convert to SGD)
+      const spentMap={}; (state.transactions||[]).forEach(t=>{ if(t.type==='Expense' && t.date?.startsWith(ym)){ const amtSgd = (Number(t.amount)||0) / (rates[t.currency]||1); spentMap[t.category]=Number((Number(spentMap[t.category]||0)+amtSgd).toFixed(2)); } });
+      // compute rollover from previous month using monthlyTotals
+      const prevYm=new Date(ym+'-01'); prevYm.setMonth(prevYm.getMonth()-1); const prev=prevYm.toISOString().slice(0,7);
+      const prevTotals=state.monthlyTotals?.[prev]||{}; const prevBudgets=state.budgets?.[prev]||{};
+      const rows=[];
+      cats.forEach(cat=>{
+        const budSgd=Number(budgets[cat]||0);
+        const spentSgd=Number(spentMap[cat]||0);
+        // prev rollover
+        let rolloverSgd=0; if(rollover && prevBudgets[cat]){ const entry=prevTotals[cat]; if(entry){ const fxINR=Number(entry?.fx?.INR||entry.fx||60); const fxUSD=Number(entry?.fx?.USD||0.73); const spentPrev = Number(entry.SGD||0) + Number(entry.INR||0)/fxINR + Number(entry.USD||0)/fxUSD; const diff=Number(prevBudgets[cat]||0) - spentPrev; rolloverSgd = diff>0?diff:0; } }
+        const availableSgd = Math.max(0, Number((budSgd + rolloverSgd - spentSgd).toFixed(2)));
+        const budDisp = (budSgd*(rates[base]||1)); const spentDisp=(spentSgd*(rates[base]||1)); const availDisp=(availableSgd*(rates[base]||1));
+        const pct = budSgd>0? Math.min(100, Math.round((spentSgd/ budSgd)*100)) : 0;
+        rows.push(`<tr>
+          <td>${cat}</td>
+          <td><input type="number" min="0" step="0.01" data-cat="${cat}" class="budgetInput" value="${(budDisp).toFixed(2)}" style="width:140px;"></td>
+          <td class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(spentDisp)}</td>
+          <td class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(availDisp)}</td>
+          <td><div style="height:10px;background:var(--border);border-radius:999px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#22c55e,#3b82f6);"></div>
+          </div></td>
+        </tr>`);
+      });
+      tbody.innerHTML=rows.join('');
+      // attach input handlers
+      tbody.querySelectorAll('.budgetInput').forEach(inp=>{
+        inp.addEventListener('change',()=>{
+          const cat=inp.getAttribute('data-cat'); const displayVal=Number(inp.value||0);
+          const s=load(); ensureStores(s); const ymSel=byId('budgetMonth').value||ymToday(); if(!s.budgets[ymSel]) s.budgets[ymSel]={};
+          const baseNow=byId('baseCcy').value||'SGD'; const r = rates[baseNow]||1; const asSgd = displayVal / r;
+          s.budgets[ymSel][cat]=Number(asSgd.toFixed(2)); save(s); renderBudgets(s);
+        });
+      });
+    }
+
+    async function renderReports(state){
+      // trend line
+      const canvas=byId('trendCanvas'); if(canvas){ const ctx=canvas.getContext('2d'); const base=byId('baseCcy')?.value||'SGD'; const rates=await fetchRates().catch(()=>({SGD:1,INR:60,USD:0.73}));
+        const labels=[]; const values=[]; const now=new Date();
+        for(let i=11;i>=0;i--){ const d=new Date(now.getFullYear(), now.getMonth()-i,1); const ym=d.toISOString().slice(0,7); labels.push(ym); const cats=state.monthlyTotals?.[ym]||{}; let sgd=0; Object.keys(cats).forEach(k=>{ const e=cats[k]; const fxINR=Number(e?.fx?.INR||e.fx||60), fxUSD=Number(e?.fx?.USD||0.73); const inSgd=(Number(e.SGD||0)) + (Number(e.INR||0))/fxINR + (Number(e.USD||0))/fxUSD; sgd+=inSgd; }); values.push(sgd*(rates[base]||1)); }
+        // draw
+        ctx.clearRect(0,0,canvas.width,canvas.height); const pad=30; const w=canvas.width-pad*2; const h=canvas.height-pad*2; const max=Math.max(1, ...values);
+        ctx.strokeStyle='#334155'; ctx.strokeRect(pad, pad, w, h);
+        // axes labels lightly
+        ctx.fillStyle='#94a3b8'; ctx.font='12px Inter'; ctx.fillText(new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:0}).format(max), 6, pad+10);
+        // plot
+        ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2; ctx.beginPath(); values.forEach((v,idx)=>{ const x=pad + (w*(idx/(values.length-1))); const y=pad + h - (v/max)*h; if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
+        // dots
+        ctx.fillStyle='#93c5fd'; values.forEach((v,idx)=>{ const x=pad + (w*(idx/(values.length-1))); const y=pad + h - (v/max)*h; ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); });
+      }
+      // category drill-down
+      const catSel=byId('reportCat'); const catBody=byId('reportCatBody'); if(catSel&&catBody){ catSel.innerHTML=''; (state.categories||[]).forEach(c=>{ const o=document.createElement('option'); o.textContent=c; catSel.appendChild(o); }); const refreshCat= async()=>{ const base=byId('baseCcy')?.value||'SGD'; const rates=await fetchRates().catch(()=>({SGD:1,INR:60,USD:0.73})); const cat=catSel.value; const now=new Date(); const rows=[]; for(let i=11;i>=0;i--){ const d=new Date(now.getFullYear(), now.getMonth()-i,1); const ym=d.toISOString().slice(0,7); const e=state.monthlyTotals?.[ym]?.[cat]; if(!e){ rows.push(`<tr><td>${ym}</td><td class="mono">—</td></tr>`); continue;} const fxINR=Number(e?.fx?.INR||e.fx||60), fxUSD=Number(e?.fx?.USD||0.73); const inSgd=(Number(e.SGD||0)) + (Number(e.INR||0))/fxINR + (Number(e.USD||0))/fxUSD; const val=inSgd*(rates[base]||1); rows.push(`<tr><td>${ym}</td><td class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base}).format(val)}</td></tr>`);} catBody.innerHTML=rows.join(''); };
+        catSel.addEventListener('change',refreshCat); refreshCat(); }
+      // weekday heatmap (last 90 days)
+      const heat=byId('heatmap'); if(heat){ const sums=[0,0,0,0,0,0,0]; const base=byId('baseCcy')?.value||'SGD'; const rates=await fetchRates().catch(()=>({SGD:1,INR:60,USD:0.73})); const now=Date.now(); const ninety=90*86400000; (state.transactions||[]).forEach(t=>{ if(t.type==='Expense'){ const ts= new Date(t.date).getTime(); if((now-ts)<=ninety){ const d=new Date(t.date).getDay(); const inBase = ((Number(t.amount)||0) / (rates[t.currency]||1)) * (rates[base]||1); sums[d]+=inBase; } } }); const max=Math.max(1,...sums); const labels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; heat.innerHTML=''; sums.forEach((v,i)=>{ const bg=`rgba(59,130,246,${0.2+(0.8*(v/max))})`; const cell=document.createElement('div'); cell.style.cssText='border:1px solid var(--border);border-radius:10px;padding:18px;text-align:center;'; cell.innerHTML=`<div style="font-weight:700;">${labels[i]}</div><div class="mono" style="margin-top:6px;">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:0}).format(v)}</div>`; cell.style.background=bg; heat.appendChild(cell); }); }
+    }
     function renderLoans(state){
       const tbody=document.querySelector('#loansTable tbody'); if(!tbody) return; tbody.innerHTML='';
       const sort=byId('sortSelect').value; const loans=[...state.loans];
       loans.sort((a,b)=>{ if(sort==='created_desc') return b.createdAt-a.createdAt; if(sort==='created_asc') return a.createdAt-b.createdAt; if(sort==='balance_desc') return b.balance-a.balance; if(sort==='balance_asc') return a.balance-b.balance; if(sort==='borrower_asc') return a.borrower.localeCompare(b.borrower); return 0; });
       for(const l of loans){
         const tr=document.createElement('tr'); const last=l.lastCalcDate||l.startDate;
-        tr.innerHTML=`<td>${l.borrower}</td><td>${l.currency}</td><td>${Number(l.apr).toFixed(2)}</td><td class="mono">${fmt(l.balance,l.currency)}</td><td class="mono">${fmt(l.totalRepaid||0,l.currency)}</td><td class="mono">${fmt(l.totalInterest||0,l.currency)}</td><td>${last}</td><td>${l.closed?'<span class="chip" style="border-color:#204026;color:#86efac;">Closed</span>':'<span class="chip">Active</span>'}</td><td><div class="row"><button class="btn blue" ${l.closed?'disabled':''} onclick="openPayModal('${l.id}')">Payment</button><button class="btn ghost" ${l.closed?'disabled':''} onclick="openTopupModal('${l.id}')">Top-up</button><button class="btn warn" onclick="toggleCloseLoan('${l.id}')">${l.closed?'Reopen':'Close'}</button><button class="btn ghost" onclick="viewHistory('${l.id}')">History</button><button class="btn danger" onclick="deleteLoan('${l.id}')">Delete</button></div></td>`;
+        tr.innerHTML=`<td>${l.borrower}</td><td>${l.currency}</td><td>${Number(l.apr).toFixed(2)}</td><td class="mono">${fmt(l.balance,l.currency)}</td><td class="mono">${fmt(l.totalRepaid||0,l.currency)}</td><td class="mono">${fmt(l.totalInterest||0,l.currency)}</td><td>${last}</td><td>${l.closed?'<span class="chip" style="border-color:#204026;color:#86efac;">Closed</span>':'<span class="chip">Active</span>'}</td><td><div class="row"><button class="btn blue" ${l.closed?'disabled':''} onclick="openPayModal('${l.id}')">Payment</button><button class="btn ghost" ${l.closed?'disabled':''} onclick="openTopupModal('${l.id}')">Top-up</button><button class="btn ghost" onclick="openTermsModal('${l.id}')">Terms</button><button class="btn warn" onclick="toggleCloseLoan('${l.id}')">${l.closed?'Reopen':'Close'}</button><button class="btn ghost" onclick="viewHistory('${l.id}')">History</button><button class="btn danger" onclick="deleteLoan('${l.id}')">Delete</button></div></td>`;
         tbody.appendChild(tr);
       }
     }
@@ -578,16 +769,25 @@ self.addEventListener('fetch', e => {
         tbody.appendChild(tr);
       });
     }
+    function setLotMethodUI(state){ const sel=document.getElementById('lotMethodSel'); if(!sel) return; sel.value = (state.settings?.lotMethod)||'FIFO'; }
     function renderCrypto(state){
       const tbody=document.querySelector('#cryptoTable tbody'); if(!tbody) return; tbody.innerHTML='';
-      const base=byId('baseCcy')?.value||'SGD';
+      const base=byId('baseCcy')?.value||'SGD'; setLotMethodUI(state);
+      const ratesCache = null; // FX handled via base conversion below using rates in KPIs if needed
       state.crypto.forEach(c=>{
-        const last=c.lastPrice?`SGD ${Number(c.lastPrice.SGD||0).toLocaleString(undefined,{maximumFractionDigits:4})} / INR ${Number(c.lastPrice.INR||0).toLocaleString(undefined,{maximumFractionDigits:2})}`:'—';
-        const valueBase=(Number(c.quantity)||0)*Number(c.lastPrice?.[base]||0);
-        const costBase=(c.currency===base)? (Number(c.quantity||0)*Number(c.buyPrice||0)):0; // simple same-ccy cost
-        const pl=valueBase-costBase;
+        // lots: c.lots=[{qty,price,date}], realizedPL in holding currency
+        const lots = (c.lots||[]).slice();
+        const qtyRemaining = lots.reduce((s,x)=>s+Number(x.qty||0),0);
+        const totalCost = lots.reduce((s,x)=> s + (Number(x.qty||0)*Number(x.price||0)), 0);
+        const avgCost = qtyRemaining>0 ? totalCost/qtyRemaining : (c.buyPrice||0);
+        const last=c.lastPrice?`SGD ${Number(c.lastPrice.SGD||0).toLocaleString(undefined,{maximumFractionDigits:4})} / INR ${Number(c.lastPrice.INR||0).toLocaleString(undefined,{maximumFractionDigits:2})} / USD ${Number(c.lastPrice.USD||0).toLocaleString(undefined,{maximumFractionDigits:4})}`:'—';
+        const valueBase=(Number(qtyRemaining)||0)*Number(c.lastPrice?.[base]||0);
+        const rates = (window.__ratesCache)||{SGD:1,INR:60,USD:0.73};
+        const avgCostBase = (avgCost / (rates[c.currency]||1)) * (rates[base]||1);
+        const unreal = valueBase - (avgCostBase*qtyRemaining);
+        const realized = c.realizedPL||0; const realizedBase = (realized / (rates[c.currency]||1)) * (rates[base]||1);
         const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${c.ticker}</td><td class="mono">${Number(c.quantity).toLocaleString()}</td><td class="mono">${fmt(c.buyPrice||0,c.currency)}</td><td>${c.currency}</td><td class="mono">${last}</td><td class="mono">${fmt(valueBase||0,base)}</td><td class="mono" style="color:${pl>=0?'#86efac':'#fca5a5'};">${fmt(pl||0,base)}</td><td>${c.note||''}</td><td><div class="row"><button class="btn ghost" onclick="editCrypto('${c.id}')">Edit</button><button class="btn danger" onclick="deleteCrypto('${c.id}')">Delete</button></div></td>`;
+        tr.innerHTML=`<td>${c.ticker}</td><td class="mono">${Number(qtyRemaining).toLocaleString()}</td><td class="mono">${fmt(avgCost||0,c.currency)}</td><td>${c.currency}</td><td class="mono">${last}</td><td class="mono">${fmt(valueBase||0,base)}</td><td class="mono">${fmt(realizedBase||0,base)} | <span style="color:${unreal>=0?'#86efac':'#fca5a5'};">${fmt(unreal||0,base)}</span></td><td>${c.note||''}</td><td><div class="row"><button class="btn ghost" onclick="editCrypto('${c.id}')">Edit</button><button class="btn danger" onclick="deleteCrypto('${c.id}')">Delete</button></div></td>`;
         tbody.appendChild(tr);
       });
     }
@@ -609,8 +809,10 @@ self.addEventListener('fetch', e => {
       months.forEach(m=>{
         const cats=state.monthlyTotals[m];
         Object.keys(cats).forEach(cat=>{
-          const entry=cats[cat]; // {SGD, INR, fx}
-          const amtInSGD = (Number(entry.SGD||0)) + (Number(entry.INR||0))/(Number(entry.fx||60));
+          const entry=cats[cat]; // {SGD, INR, USD, fx:{INR,USD}}
+          const fxINR = Number(entry?.fx?.INR || entry.fx || 60);
+          const fxUSD = Number(entry?.fx?.USD || 0.73);
+          const amtInSGD = (Number(entry.SGD||0)) + (Number(entry.INR||0))/fxINR + (Number(entry.USD||0))/fxUSD;
           const totalBase = amtInSGD * (rates[base]||1);
           const tr=document.createElement('tr');
           tr.innerHTML=`<td>${m}</td><td>${cat}</td><td class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(totalBase)}</td>`;
@@ -619,21 +821,35 @@ self.addEventListener('fetch', e => {
       });
     }
 
-    function refresh(){ const s=load(); renderKPIs(s); renderLoans(s); renderAccounts(s); renderInvestments(s); renderCrypto(s); renderTransactions(s); renderCategories(s); hydrateAccountSelects(); }
+    function refresh(){ const s=load(); ensureStores(s); renderKPIs(s); renderLoans(s); renderAccounts(s); renderInvestments(s); renderCrypto(s); renderTransactions(s); renderCategories(s); renderBudgets(s); renderReports(s); renderGoals(s); hydrateAccountSelects(); }
 
     // ---------- Loans CRUD ----------
-    function addLoan(){ const borrower=byId('borrower').value.trim(); const currency=byId('currency').value; const principal=Number(byId('principal').value||0); const apr=Number(byId('apr').value||0); const startDate=byId('startDate').value||todayISO(); const notes=byId('notes').value.trim(); if(!borrower||!principal||principal<=0) return alert('Enter borrower and positive principal.'); if(!['INR','SGD'].includes(currency)) return alert('Currency must be INR or SGD.'); const s=load(); const loan={ id:uid(), borrower,currency,apr,startDate,notes,balance:principal,totalRepaid:0,totalInterest:0,lastCalcDate:startDate,closed:false,createdAt:Date.now(), txns:[{type:'create',date:startDate,amount:principal,balanceAfter:principal,note:notes}] }; s.loans.push(loan); save(s); ['borrower','principal','apr','notes'].forEach(id=>byId(id).value=''); byId('startDate').value=''; refresh(); }
+    function addLoan(){ const borrower=byId('borrower').value.trim(); const currency=byId('currency').value; const principal=Number(byId('principal').value||0); const apr=Number(byId('apr').value||0); const startDate=byId('startDate').value||todayISO(); const notes=byId('notes').value.trim(); if(!borrower||!principal||principal<=0) return alert('Enter borrower and positive principal.'); if(!['INR','SGD','USD'].includes(currency)) return alert('Currency must be INR, SGD, or USD.'); const s=load(); const loan={ id:uid(), borrower,currency,apr,startDate,notes,balance:principal,totalRepaid:0,totalInterest:0,lastCalcDate:startDate,closed:false,createdAt:Date.now(), txns:[{type:'create',date:startDate,amount:principal,balanceAfter:principal,note:notes}] }; s.loans.push(loan); save(s); ['borrower','principal','apr','notes'].forEach(id=>byId(id).value=''); byId('startDate').value=''; refresh(); }
     function toggleCloseLoan(id){ const s=load(); const l=s.loans.find(x=>x.id===id); if(!l) return; l.closed=!l.closed; save(s); refresh(); }
     function deleteLoan(id){ if(!confirm('Delete this loan permanently?')) return; const s=load(); s.loans=s.loans.filter(l=>l.id!==id); save(s); refresh(); }
     function viewHistory(loanId){
       const s=load(); const l=s.loans.find(x=>x.id===loanId); if(!l) return;
-      const lines=[`Borrower: ${l.borrower}`,`Currency: ${l.currency}`,`APR: ${l.apr}%`,`Start: ${l.startDate}`,`Balance: ${fmt(l.balance,l.currency)}`,`Total Repaid: ${fmt(l.totalRepaid,l.currency)}`,`Interest Collected: ${fmt(l.totalInterest,l.currency)}`,``,`Transactions:`];
-      l.txns.forEach(t=>{
-        if(t.type==='create')  lines.push(` - [${t.date}] CREATE  ${fmt(t.amount,l.currency)} → Bal ${fmt(t.balanceAfter,l.currency)}`);
-        if(t.type==='payment') lines.push(` - [${t.date}] PAY     ${fmt(t.amount,l.currency)} (int ${fmt(t.interestApplied,l.currency)}, prin ${fmt(t.principalApplied,l.currency)}) → Bal ${fmt(t.balanceAfter,l.currency)}`);
-        if(t.type==='topup')   lines.push(` - [${t.date}] TOPUP   ${fmt(t.amount,l.currency)} → Bal ${fmt(t.balanceAfter,l.currency)}`);
+      const dlg=byId('historyModal'); const body=byId('historyBody'); if(!dlg||!body) return;
+      const header=byId('historyHeader'); if(header) header.textContent=`History — ${l.borrower} (${l.currency})`;
+      const rows=[];
+      rows.push(`<div class="row" style="flex-wrap:wrap;gap:12px;margin-bottom:6px;">
+        <span class="chip">APR ${Number(l.apr||0).toFixed(2)}%</span>
+        <span class="chip">Start ${l.startDate}</span>
+        <span class="chip">Balance ${fmt(l.balance,l.currency)}</span>
+        <span class="chip">Repaid ${fmt(l.totalRepaid||0,l.currency)}</span>
+        <span class="chip">Interest ${fmt(l.totalInterest||0,l.currency)}</span>
+      </div>`);
+      rows.push('<div style="overflow:auto;max-height:50vh;">');
+      rows.push('<table style="width:100%;"><thead><tr><th>Date</th><th>Type</th><th class="mono">Amount</th><th class="mono">Interest</th><th class="mono">Principal</th><th class="mono">Balance After</th><th>Note</th></tr></thead><tbody>');
+      (l.txns||[]).forEach(t=>{
+        if(t.type==='create')  rows.push(`<tr><td>${t.date}</td><td>Create</td><td class="mono">${fmt(t.amount,l.currency)}</td><td class="mono">—</td><td class="mono">—</td><td class="mono">${fmt(t.balanceAfter,l.currency)}</td><td>${t.note||''}</td></tr>`);
+        if(t.type==='payment') rows.push(`<tr><td>${t.date}</td><td>Payment</td><td class="mono">${fmt(t.amount,l.currency)}</td><td class="mono">${fmt(t.interestApplied||0,l.currency)}</td><td class="mono">${fmt(t.principalApplied||0,l.currency)}</td><td class="mono">${fmt(t.balanceAfter,l.currency)}</td><td>${t.note||''}</td></tr>`);
+        if(t.type==='topup')   rows.push(`<tr><td>${t.date}</td><td>Top-up</td><td class="mono">${fmt(t.amount,l.currency)}</td><td class="mono">—</td><td class="mono">—</td><td class="mono">${fmt(t.balanceAfter,l.currency)}</td><td>${t.note||''}</td></tr>`);
+        if(t.type==='fee')     rows.push(`<tr><td>${t.date}</td><td>Late Fee</td><td class="mono">${fmt(t.amount,l.currency)}</td><td class="mono">—</td><td class="mono">—</td><td class="mono">${fmt(t.balanceAfter,l.currency)}</td><td>${t.note||''}</td></tr>`);
       });
-      alert(lines.join('\n'));
+      rows.push('</tbody></table></div>');
+      body.innerHTML=rows.join('');
+      dlg.showModal();
     }
 
     // ---------- Loan Payments ----------
@@ -643,7 +859,14 @@ self.addEventListener('fetch', e => {
     function openTopupModal(id){ currentLoanId=id; byId('topupDate').value=todayISO(); byId('topupAmount').value=''; byId('topupModal').showModal(); }
     function closeTopupModal(){ byId('topupModal').close(); }
     function previewPayment(){ const s=load(); const l=s.loans.find(x=>x.id===currentLoanId); if(!l) return; const date=byId('payDate').value||todayISO(); const amount=Number(byId('payAmount').value||0); if(amount<=0){ byId('payPreview').textContent='Enter a positive amount.'; byId('confirmPayBtn').disabled=true; return;} const {days,interest}=computeAccruedInterest(l,date); const intRounded=Math.max(0,Number(interest.toFixed(2))); if(amount<intRounded){ byId('payPreview').innerHTML=`Accrued interest for ${days} day(s): <b>${fmt(intRounded,l.currency)}</b><br>Payment is less than accrued interest. Principal will not reduce.`; } else { const toInterest=intRounded; const toPrincipal=amount-toInterest; const newBal=Math.max(0, Number((l.balance-toPrincipal).toFixed(2))); byId('payPreview').innerHTML=`Accrued interest for ${days} day(s): <b>${fmt(toInterest,l.currency)}</b><br>→ Interest: <b>${fmt(toInterest,l.currency)}</b><br>→ Principal: <b>${fmt(toPrincipal,l.currency)}</b><br>New principal balance: <b>${fmt(newBal,l.currency)}</b>`; } byId('confirmPayBtn').disabled=false; }
-    function confirmPayment(){ const s=load(); const l=s.loans.find(x=>x.id===currentLoanId); if(!l) return; const date=byId('payDate').value||todayISO(); const amount=Number(byId('payAmount').value||0); if(amount<=0) return alert('Enter a positive amount'); const {interest}=computeAccruedInterest(l,date); const intRounded=Math.max(0,Number(interest.toFixed(2))); let toInterest=Math.min(amount,intRounded), toPrincipal=Math.max(0,amount-toInterest); l.totalInterest=Number((Number(l.totalInterest)+toInterest).toFixed(2)); l.totalRepaid=Number((Number(l.totalRepaid)+toPrincipal).toFixed(2)); l.balance=Number((Number(l.balance)-toPrincipal).toFixed(2)); if(l.balance<0) l.balance=0; l.lastCalcDate=date; l.txns.push({type:'payment',date,amount,interestApplied:toInterest,principalApplied:toPrincipal,balanceAfter:l.balance}); save(s); refresh(); closePayModal(); }
+    function confirmPayment(){ const s=load(); const l=s.loans.find(x=>x.id===currentLoanId); if(!l) return; const date=byId('payDate').value||todayISO(); const amount=Number(byId('payAmount').value||0); if(amount<=0) return alert('Enter a positive amount'); const {interest}=computeAccruedInterest(l,date); const intRounded=Math.max(0,Number(interest.toFixed(2)));
+      // interest-only period
+      const ioUntil=l.terms?.interestOnlyUntil; let toInterest=Math.min(amount,intRounded), toPrincipal=Math.max(0,amount-toInterest);
+      if(ioUntil && date<=ioUntil){ toPrincipal=0; toInterest=amount; }
+      l.totalInterest=Number((Number(l.totalInterest)+toInterest).toFixed(2)); l.totalRepaid=Number((Number(l.totalRepaid)+toPrincipal).toFixed(2)); l.balance=Number((Number(l.balance)-toPrincipal).toFixed(2)); if(l.balance<0) l.balance=0; l.lastCalcDate=date; l.txns.push({type:'payment',date,amount,interestApplied:toInterest,principalApplied:toPrincipal,balanceAfter:l.balance});
+      // late fee rule
+      const late=l.terms?.late; if(late?.enabled){ const days=daysBetween(l.lastCalcDate, date); if(days>Number(late.graceDays||0)){ const fee=Number(late.amount||0); if(fee>0){ l.totalInterest=Number((Number(l.totalInterest)+fee).toFixed(2)); l.txns.push({type:'fee',date,amount:fee,balanceAfter:l.balance,note:'Late fee applied'}); } } }
+      save(s); refresh(); closePayModal(); }
     function confirmTopup(){ const s=load(); const l=s.loans.find(x=>x.id===currentLoanId); if(!l) return; const date=byId('topupDate').value||todayISO(); const amount=Number(byId('topupAmount').value||0); if(amount<=0) return alert('Enter a positive amount.'); l.balance=Number((Number(l.balance)+amount).toFixed(2)); l.txns.push({type:'topup',date,amount,balanceAfter:l.balance}); save(s); refresh(); closeTopupModal(); }
 
     // ---------- Accounts CRUD & CC Pay ----------
@@ -695,6 +918,11 @@ self.addEventListener('fetch', e => {
       save(s); closeInvTopupModal(); refresh();
     }
 
+    function openTermsModal(id){ currentLoanId=id; const s=load(); const l=s.loans.find(x=>x.id===id); if(!l) return; const terms=l.terms||{}; const rs=terms.rateSchedule||[]; byId('rateSchedule').value = rs.map(r=>`${r.from}, ${r.apr}`).join('\n'); byId('interestOnlyUntil').value=terms.interestOnlyUntil||''; byId('lateFeeAmt').value=terms.late?.amount||''; byId('lateGrace').value=terms.late?.graceDays||''; byId('lateEnabled').checked=!!terms.late?.enabled; byId('loanTermsModal').showModal(); }
+    function closeTermsModal(){ byId('loanTermsModal').close(); }
+    function parseSchedule(txt){ return txt.split(/\n+/).map(l=>l.trim()).filter(Boolean).map(line=>{ const m=line.split(','); return {from:(m[0]||'').trim(), apr:Number((m[1]||'').trim()||0)}; }).filter(x=>x.from); }
+    function saveTerms(){ const s=load(); const l=s.loans.find(x=>x.id===currentLoanId); if(!l) return; const schedule=parseSchedule(byId('rateSchedule').value||''); const interestOnlyUntil=byId('interestOnlyUntil').value||''; const late={ enabled: byId('lateEnabled').checked, amount:Number(byId('lateFeeAmt').value||0), graceDays: Number(byId('lateGrace').value||0) }; l.terms={ rateSchedule:schedule, interestOnlyUntil, late }; save(s); closeTermsModal(); }
+
     // ---------- Investments CRUD ----------
     function addOrUpdateInvestment() {
       const name = byId('invName').value.trim();
@@ -730,15 +958,42 @@ self.addEventListener('fetch', e => {
     // ---------- Crypto CRUD ----------
     async function addOrUpdateCrypto() {
       const ticker = byId('cTicker').value.trim().toUpperCase();
-      const quantity = Number(byId('cQty').value || 0);
-      const buyPrice = Number(byId('cBuy').value || 0);
+      const qty = Number(byId('cQty').value || 0);
+      const price = Number(byId('cBuy').value || 0);
       const currency = byId('cCcy').value;
       const note = byId('cNote').value.trim();
-      if (!ticker || quantity<=0) return alert('Enter ticker and positive quantity');
-      const s = load();
+      if (!ticker || qty===0) return alert('Enter ticker and non-zero quantity (negative to sell)');
+      const s = load(); ensureStores(s);
       let c = s.crypto.find(x => x.ticker === ticker && x.currency === currency);
-      if (!c) { c = { id: uid(), ticker }; s.crypto.push(c); }
-      Object.assign(c, { ticker, quantity, buyPrice, currency, note });
+      if (!c) { c = { id: uid(), ticker, currency, lots:[], realizedPL:0 }; s.crypto.push(c); }
+      if (!Array.isArray(c.lots)) c.lots=[];
+      c.note = note;
+      const method = (s.settings?.lotMethod)||'FIFO';
+      if(qty>0){
+        c.lots.push({ qty, price, date: todayISO() });
+      } else {
+        let sellQty = -qty; const lots = c.lots;
+        const order = method==='LIFO' ? [...lots].reverse() : [...lots];
+        let realized = 0; const newLots=[];
+        for(const lot of order){
+          if(sellQty<=0){ newLots.push(lot); continue; }
+          const available = Number(lot.qty);
+          const take = Math.min(available, sellQty);
+          realized += (price - Number(lot.price)) * take;
+          const remaining = available - take;
+          if(remaining>0){ newLots.push({ qty: remaining, price: lot.price, date: lot.date }); }
+          sellQty -= take;
+        }
+        if(sellQty>0){ alert('Selling more than available. Adjusted to available.'); }
+        // restore original order for FIFO
+        c.lots = method==='LIFO' ? newLots.reverse() : newLots;
+        c.realizedPL = Number((Number(c.realizedPL||0) + realized).toFixed(2));
+      }
+      // Update snapshot quantity and average price for compatibility
+      const qtyRem = c.lots.reduce((s,x)=>s+Number(x.qty||0),0);
+      const cost = c.lots.reduce((s,x)=>s+(Number(x.qty||0)*Number(x.price||0)),0);
+      c.quantity = qtyRem; c.buyPrice = qtyRem>0? Number((cost/qtyRem).toFixed(8)) : 0;
+      // update prices
       const prices = await fetchCryptoPrices([ticker]);
       const id = COINGECKO_IDS[ticker];
       if (id && prices[id]) { c.lastPrice = { SGD: prices[id].sgd || 0, INR: prices[id].inr || 0, USD: prices[id].usd || 0 }; }
@@ -785,19 +1040,28 @@ self.addEventListener('fetch', e => {
     function deleteTxn(id){ const s=load(); s.transactions=s.transactions.filter(t=>t.id!==id); save(s); renderTransactions(s); }
     function closeMonth(){
       const s=load(); const ym=byId('closeMonth').value; if(!ym) return alert('Pick a month (YYYY-MM)');
-      const base=byId('baseCcy')?.value||'SGD';
       const monthTx=s.transactions.filter(t=> t.date?.startsWith(ym) && t.type==='Expense');
       if(!monthTx.length) return alert('No expenses for that month.');
-      const fxSnapshot = s.cache?.rates?.data?.INR || 60;
+      const rateData = s.cache?.rates?.data || {SGD:1, INR:60, USD:0.73};
       if(!s.monthlyTotals[ym]) s.monthlyTotals[ym]={};
       monthTx.forEach(t=>{
         const cat=t.category||'Others';
-        if(!s.monthlyTotals[ym][cat]) s.monthlyTotals[ym][cat]={SGD:0, INR:0, fx: fxSnapshot};
+        if(!s.monthlyTotals[ym][cat]) s.monthlyTotals[ym][cat]={SGD:0, INR:0, USD:0, fx:{INR: rateData.INR||60, USD: rateData.USD||0.73}};
         s.monthlyTotals[ym][cat][t.currency]=(Number(s.monthlyTotals[ym][cat][t.currency]||0)+Number(t.amount||0));
       });
       s.transactions = s.transactions.filter(t=> !t.date?.startsWith(ym)); save(s);
       renderCategories(s); renderTransactions(s); alert('Month closed and transactions cleared.');
     }
+
+    // ---------- Goals ----------
+    function monthsBetweenInclusive(aIso,bIso){ const a=new Date(aIso+'-01'); const b=new Date(bIso+'-01'); const months=(b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth()); return Math.max(0, months); }
+    function renderGoals(state){ const tbody=document.querySelector('#goalsTable tbody'); if(!tbody) return; tbody.innerHTML=''; const base=byId('baseCcy')?.value||'SGD'; const select=byId('goalSelect'); if(select) { select.innerHTML=''; }
+      (state.goals||[]).forEach(g=>{ const today=new Date().toISOString().slice(0,10); const months=monthsBetweenInclusive(today.slice(0,7), g.targetDate?.slice(0,7)||today.slice(0,7)); const remaining=Math.max(0, Number(g.target||0)-Number(g.current||0)); const req = months>0? (remaining/months) : remaining; const tr=document.createElement('tr'); tr.innerHTML=`<td>${g.name}</td><td>${g.currency}</td><td class="mono">${fmt(g.target||0,g.currency)}</td><td class="mono">${fmt(g.current||0,g.currency)}</td><td>${g.targetDate||''}</td><td class="mono">${months}</td><td class="mono">${fmt(req||0,g.currency)}</td><td><button class="btn danger" onclick="deleteGoal('${g.id}')">Delete</button></td>`; tbody.appendChild(tr); if(select){ const o=document.createElement('option'); o.value=g.id; o.textContent=g.name; select.appendChild(o);} });
+      renderBurndown(state);
+    }
+    function renderBurndown(state){ const wrap=byId('burndownWrap'); if(!wrap) return; const sel=byId('goalSelect'); if(!sel || !sel.value){ wrap.innerHTML='<div class="muted">Select a goal to see projection.</div>'; return; } const g=(state.goals||[]).find(x=>x.id===sel.value); if(!g){ wrap.innerHTML='<div class="muted">Goal not found.</div>'; return;} const today=new Date().toISOString().slice(0,10); const months=monthsBetweenInclusive(today.slice(0,7), g.targetDate?.slice(0,7)||today.slice(0,7)); const remaining=Math.max(0, Number(g.target||0)-Number(g.current||0)); const req = months>0? (remaining/months) : remaining; let cur=Number(g.current||0); const rows=['<table><thead><tr><th>Month</th><th class="mono">Projected Balance</th></tr></thead><tbody>']; for(let i=0;i<=months;i++){ const d=new Date(); d.setMonth(d.getMonth()+i); const ym=d.toISOString().slice(0,7); rows.push(`<tr><td>${ym}</td><td class="mono">${fmt(cur,g.currency)}</td></tr>`); cur = Number((cur+req).toFixed(2)); } rows.push('</tbody></table>'); wrap.innerHTML=rows.join(''); }
+    function addGoal(){ const name=byId('goalName').value.trim(); const currency=byId('goalCcy').value; const target=Number(byId('goalTarget').value||0); const current=Number(byId('goalCurrent').value||0); const targetDate=byId('goalDate').value; if(!name||!target||target<=0) return alert('Enter goal name and positive target'); const s=load(); ensureStores(s); let g=s.goals.find(x=>x.name.toLowerCase()===name.toLowerCase() && x.currency===currency); if(!g){ g={id:uid()}; s.goals.push(g);} Object.assign(g,{name,currency,target,current,targetDate}); save(s); ['goalName','goalTarget','goalCurrent','goalDate'].forEach(id=>byId(id).value=''); renderGoals(s); }
+    function deleteGoal(id){ const s=load(); s.goals=(s.goals||[]).filter(g=>g.id!==id); save(s); renderGoals(s); }
 
     let deferredPrompt = null;
 
@@ -834,11 +1098,25 @@ self.addEventListener('fetch', e => {
       // theme toggle
       byId('themeToggle').addEventListener('click', toggleTheme);
 
+      // lock button
+      byId('lockBtn')?.addEventListener('click', ()=>{
+        const PASS_KEY='loan-tracker:passhash';
+        const hasPass=!!localStorage.getItem(PASS_KEY);
+        if(!hasPass){
+          alert('No password set. Configure a password in Settings to enable Lock.');
+          navTo('settings', document.querySelector('.nav button[data-view="settings"]'));
+          return;
+        }
+        // Immediately lock regardless of idle setting
+        const ov=document.getElementById('lockOverlay');
+        if(ov){ document.getElementById('lockMsg').textContent='Locked by user.'; ov.style.display='flex'; document.body.style.overflow='hidden'; localStorage.setItem('loan-tracker:locked','1'); }
+      });
+
       // topbar
       byId('exportBtn').addEventListener('click',()=>{ const blob=new Blob([localStorage.getItem(LS_KEY)||'{}'],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`wealthflow-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
       byId('importBtn').addEventListener('click',()=>byId('importFile').click());
       byId('importFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev=>{ try{ const obj=JSON.parse(ev.target.result); if(!obj || typeof obj!=='object') throw new Error('Invalid file'); if(!obj.loans) obj.loans=[]; if(!obj.accounts) obj.accounts=[]; if(!obj.investments) obj.investments=[]; if(!obj.crypto) obj.crypto=[]; if(!obj.transactions) obj.transactions=[]; if(!obj.categories) obj.categories=['Food','Transport','Bills','Shopping','Health','Education','Travel','Entertainment','Fees','Others']; if(!obj.monthlyTotals) obj.monthlyTotals={}; if(!obj.cache) obj.cache={rates:null,prices:null}; localStorage.setItem(LS_KEY, JSON.stringify(obj)); refresh(); alert('Import successful.'); }catch(err){ alert('Import failed: '+err.message); } }; r.readAsText(f); });
-      byId('resetBtn').addEventListener('click',()=>{ if(!confirm('Erase all local data?')) return; localStorage.removeItem(LS_KEY); location.reload(); });
+      byId('resetBtnSettings')?.addEventListener('click',()=>{ if(!confirm('Erase all local data?')) return; localStorage.removeItem(LS_KEY); location.reload(); });
 
       // accounts
       byId('addAcctBtn').addEventListener('click',addOrUpdateAccount);
@@ -852,6 +1130,7 @@ self.addEventListener('fetch', e => {
       // crypto
       byId('addCryptoBtn').addEventListener('click',addOrUpdateCrypto);
       byId('refreshPricesBtn').addEventListener('click',async()=>{ const s=load(); const tickers=[...new Set((s.crypto||[]).map(c=>c.ticker))]; const prices=await fetchCryptoPrices(tickers); s.crypto.forEach(c=>{ const id=COINGECKO_IDS[c.ticker]; if(id && prices[id]) c.lastPrice={SGD:prices[id].sgd||0, INR:prices[id].inr||0, USD:prices[id].usd||0}; }); save(s); renderCrypto(s); renderKPIs(s); });
+      byId('lotMethodSel').addEventListener('change',()=>{ const s=load(); ensureStores(s); s.settings.lotMethod=byId('lotMethodSel').value||'FIFO'; save(s); renderCrypto(s); });
 
       // loans
       byId('addLoanBtn').addEventListener('click',addLoan);
@@ -859,15 +1138,26 @@ self.addEventListener('fetch', e => {
       byId('previewBtn').addEventListener('click',previewPayment);
       byId('confirmPayBtn').addEventListener('click',confirmPayment);
       byId('confirmTopupBtn').addEventListener('click',confirmTopup);
+      byId('saveTermsBtn').addEventListener('click',saveTerms);
 
       // transactions
       byId('tType').addEventListener('change',onTxnTypeChange);
       byId('addTxnBtn').addEventListener('click',addTransaction);
       byId('closeMonthBtn').addEventListener('click',closeMonth);
 
+      // budgets
+      const bm=byId('budgetMonth'); if(bm){ bm.value=ymToday(); bm.addEventListener('change',()=>renderBudgets(load())); }
+      const br=byId('budgetRollover'); if(br){ br.addEventListener('change',()=>{ const s=load(); ensureStores(s); s.settings.rollover=br.checked; save(s); renderBudgets(s); }); }
+
+      // reports react to base currency change automatically via refresh
+
       // dashboard controls
-      byId('baseCcy').addEventListener('change',()=>{ renderKPIs(load()); renderCategories(load()); renderCrypto(load()); });
+      byId('baseCcy').addEventListener('change',()=>{ const s=load(); renderKPIs(s); renderCategories(s); renderCrypto(s); renderBudgets(s); renderReports(s); renderGoals(s); });
       byId('includeLending').addEventListener('change',()=>renderKPIs(load()));
+
+      // goals
+      byId('addGoalBtn').addEventListener('click',addGoal);
+      byId('goalSelect').addEventListener('change',()=>renderBurndown(load()));
 
       // init
       navTo('dashboard', document.querySelector('.nav button[data-view="dashboard"]'));
@@ -875,8 +1165,69 @@ self.addEventListener('fetch', e => {
       byId('tDate').value=todayISO();
       byId('ccDate').value=todayISO();
       hydrateAccountSelects();
+
+      // security lock settings
+      const PASS_KEY='loan-tracker:passhash'; const LOCK_KEY='loan-tracker:lockEnabled'; const LAST_ACT='loan-tracker:lastActivity'; const LOCKED='loan-tracker:locked';
+      async function sha256(txt){ const enc=new TextEncoder().encode(txt); const buf=await crypto.subtle.digest('SHA-256', enc); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+      function showLock(msg){ const ov=byId('lockOverlay'); if(!ov) return; byId('lockMsg').textContent=msg||'Inactive for 10 minutes.'; ov.style.display='flex'; document.body.style.overflow='hidden'; localStorage.setItem(LOCKED,'1'); }
+      function hideLock(){ const ov=byId('lockOverlay'); if(!ov) return; ov.style.display='none'; document.body.style.overflow=''; localStorage.removeItem(LOCKED); }
+      async function checkIdle(){ const lockEnabled=localStorage.getItem(LOCK_KEY)==='1'; const hasPass=!!localStorage.getItem(PASS_KEY); if(!lockEnabled||!hasPass) return; const last=Number(localStorage.getItem(LAST_ACT)||Date.now()); if(Date.now()-last>=600000){ showLock(); } }
+      function poke(){ localStorage.setItem(LAST_ACT, Date.now().toString()); }
+      ['mousemove','keydown','touchstart','click'].forEach(ev=>document.addEventListener(ev, poke, {passive:true})); poke(); setInterval(checkIdle, 15000); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkIdle(); });
+      byId('unlockBtn').addEventListener('click', async()=>{ const p=byId('unlockPass').value; const hash=await sha256(p); if(hash===localStorage.getItem(PASS_KEY)){ byId('unlockPass').value=''; hideLock(); poke(); } else { byId('lockMsg').textContent='Incorrect password.'; } });
+      const lockChk=byId('lockEnabled'); const saveBtn=byId('savePassBtn'); const clearBtn=byId('clearPassBtn');
+      if(lockChk){ lockChk.checked = localStorage.getItem(LOCK_KEY)==='1'; lockChk.addEventListener('change',()=>{ localStorage.setItem(LOCK_KEY, lockChk.checked?'1':'0'); }); }
+      saveBtn?.addEventListener('click', async ()=>{ const a=byId('newPass').value, b=byId('newPass2').value; if(!a||a!==b) return alert('Passwords empty or do not match.'); const h=await sha256(a); localStorage.setItem(PASS_KEY,h); localStorage.setItem(LOCK_KEY, (byId('lockEnabled').checked?'1':'0')); byId('newPass').value=''; byId('newPass2').value=''; alert('Password saved.'); });
+      clearBtn?.addEventListener('click', ()=>{ if(!confirm('Clear password?')) return; localStorage.removeItem(PASS_KEY); alert('Password cleared.'); });
+      // if previously locked
+      if(localStorage.getItem(LOCKED)==='1') showLock('Session locked.');
+
+      // bottom nav wiring
+      document.querySelectorAll('.bottom-nav button').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const view=btn.getAttribute('data-view');
+          const sb=document.querySelector(`.nav button[data-view="${view}"]`);
+          navTo(view, sb);
+        });
+      });
+
+      // numeric-only improvements for number inputs
+      function setNumericKeyboard(el){
+        const step=el.getAttribute('step')||'';
+        const isDecimal = step.includes('.') || step.toLowerCase()==='any';
+        el.setAttribute('inputmode', isDecimal ? 'decimal' : 'numeric');
+        el.setAttribute('pattern', isDecimal ? "[0-9]*[.,]?[0-9]*" : "[0-9]*");
+      }
+      document.querySelectorAll('input[type="number"]').forEach(setNumericKeyboard);
+      // Prevent e/E/+/- and invalid chars; allow one decimal separator if needed
+      document.addEventListener('keydown', (e)=>{
+        const t=e.target;
+        if(!(t instanceof HTMLElement)) return;
+        if(!t.matches('input[type="number"]')) return;
+        const step=t.getAttribute('step')||'';
+        const isDecimal = step.includes('.') || step.toLowerCase()==='any';
+        const invalid = ['e','E','+','-'];
+        if(invalid.includes(e.key)) e.preventDefault();
+        if(!isDecimal && (e.key==='.' || e.key===',')) e.preventDefault();
+        if(isDecimal && (e.key==='.' || e.key===',')){
+          const val = t.value || '';
+          if(val.includes('.') || val.includes(',')) e.preventDefault();
+        }
+      }, {capture:true});
+      document.addEventListener('input', (e)=>{
+        const t=e.target;
+        if(!t || !(t instanceof Element) || !t.matches('input[type="number"]')) return;
+        setNumericKeyboard(t);
+      }, {capture:true});
     });
   </script>
+  <nav class="bottom-nav" aria-label="Mobile bottom navigation">
+    <button data-view="dashboard" aria-label="Dashboard" class="active"><span class="icon">🏠</span><span>Home</span></button>
+    <button data-view="accounts" aria-label="Accounts"><span class="icon">🏦</span><span>Accounts</span></button>
+    <button data-view="loans" aria-label="Lending"><span class="icon">🤝</span><span>Lending</span></button>
+    <button data-view="transactions" aria-label="Transactions"><span class="icon">📒</span><span>Txns</span></button>
+    <button data-view="settings" aria-label="Settings"><span class="icon">⚙️</span><span>Settings</span></button>
+  </nav>
   <div id="backdrop" class="backdrop" tabindex="-1" aria-hidden="true"></div>
 </body>
 </html>
