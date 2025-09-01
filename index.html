@@ -99,10 +99,10 @@
     @media(max-width:980px){ .layout > main{overflow:auto;-webkit-overflow-scrolling:touch} }
     .spacer{height:16px}
     @supports (padding: env(safe-area-inset-bottom)){
-      main{padding-bottom:calc(var(--bottom-nav-h) + 18px + env(safe-area-inset-bottom))}
+      main{padding-bottom:calc(var(--bottom-nav-h) + 26px + env(safe-area-inset-bottom))}
     }
     @supports not (padding: env(safe-area-inset-bottom)){
-      @media(max-width:980px){ main{padding-bottom:calc(var(--bottom-nav-h) + 18px)} }
+      @media(max-width:980px){ main{padding-bottom:calc(var(--bottom-nav-h) + 26px)} }
     }
 
     /* iOS PWA safe-area adjustments to prevent topbar/content underlap with camera/time bar */
@@ -114,14 +114,33 @@
     }
 
     /* Bottom mobile nav */
-    .bottom-nav{position:fixed;left:0;right:0;bottom:0;height:var(--bottom-nav-h);display:none;grid-template-columns:repeat(5,1fr);align-items:stretch;background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18));backdrop-filter:saturate(180%) blur(10px);border-top:1px solid var(--border);z-index:950}
-    .bottom-nav button{all:unset;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer}
-    .bottom-nav button .icon{font-size:18px;line-height:1}
-    .bottom-nav button.active{color:var(--text)}
+    .bottom-nav{position:fixed;left:0;right:0;bottom:0;height:var(--bottom-nav-h);display:none;grid-template-columns:repeat(5,1fr);align-items:stretch;background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18));backdrop-filter:saturate(180%) blur(10px);border-top:1px solid var(--border);z-index:950;padding-top:8px}
+    .bottom-nav button{all:unset;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;position:relative}
+    .bottom-nav button .icon{font-size:18px;line-height:1;color:currentColor}
+    .bottom-nav button.active{color:var(--link)}
+    .bottom-nav button.active::after{content:'';position:absolute;top:0;left:18%;right:18%;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--green))}
     @supports (padding: env(safe-area-inset-bottom)){
-      .bottom-nav{padding-bottom:env(safe-area-inset-bottom)}
+      .bottom-nav{padding-bottom:calc(env(safe-area-inset-bottom) + 4px)}
     }
     @media(max-width:980px){ .bottom-nav{display:grid} }
+
+    /* Sticky month headers in transaction list */
+    #view-transactions .as-cards{overflow:auto}
+    #txnTable .month-header th{position:sticky;top:0;z-index:2;background:var(--panel2);border-bottom:1px solid var(--border);text-align:left}
+    @media(max-width:980px){
+      table.card-table tr.month-header{display:block;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;margin:2px 0;position:sticky;top:0;z-index:2}
+      table.card-table tr.month-header th{display:block;border:0;padding:0;background:transparent}
+    }
+
+    /* Swipe actions (mobile) */
+    /* Hide swipe actions by default on desktop; they are revealed on mobile via media query */
+    .swipeable .swipe-actions{display:none}
+    @media(max-width:980px){
+      .swipeable{position:relative;overflow:hidden}
+      .swipeable .swipe-content{transform:translateX(0);transition:transform .2s ease}
+      .swipeable .swipe-actions{position:absolute;top:0;right:0;bottom:0;display:flex;align-items:center;gap:8px;padding:0 10px;background:linear-gradient(90deg, transparent, rgba(0,0,0,0.25));}
+      .swiped .swipe-content{transform:translateX(-140px)}
+    }
 
         /* Mobile menu controls */
         #menuBtn{display:inline-flex;align-items:center;gap:8px}
@@ -134,6 +153,18 @@
     th,td{padding:10px;border-bottom:1px dashed var(--border);text-align:left;font-size:14px}
     th{color:var(--heading);font-weight:700}
     tbody tr:nth-child(even){background:var(--stripe)}
+
+    /* Card-based list rendering for tables on mobile */
+    @media(max-width:980px){
+      .as-cards{overflow:visible}
+      table.card-table{display:block; border:0}
+      table.card-table thead{display:none}
+      table.card-table tbody{display:grid; gap:10px}
+      table.card-table tr{display:block; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:10px}
+      table.card-table td{display:grid; grid-template-columns:minmax(96px, 40%) 1fr; align-items:center; gap:8px; border:0; border-bottom:0; padding:6px 0}
+      table.card-table td::before{content:attr(data-label); color:var(--muted); font-size:12px}
+      table.card-table td:last-child{padding-bottom:0}
+    }
 
     .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--muted)}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
@@ -239,6 +270,15 @@
             </div>
           </div>
         </div>
+        <div class="spacer"></div>
+        <div class="card">
+          <h3>Financial Health (AI)</h3>
+          <div class="row" style="align-items:center;gap:12px;flex-wrap:wrap;">
+            <div class="chip">Score <span id="healthScore">—</span>/100</div>
+            <div id="healthSummary" class="muted">—</div>
+          </div>
+          <ul id="healthAdvice" style="margin-top:10px;padding-left:18px;"></ul>
+        </div>
       </div>
 
       <!-- ACCOUNTS -->
@@ -256,8 +296,8 @@
             <button id="addAcctBtn" class="btn primary">Add / Update</button>
             <button id="openPayCCBtn" class="btn blue">Pay Credit Card</button>
           </div>
-          <div style="overflow:auto;margin-top:10px;">
-            <table id="acctTable"><thead><tr><th>Type</th><th>Name</th><th>Currency</th><th class="mono">Amount</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
+          <div class="as-cards" style="overflow:auto;margin-top:10px;">
+            <table class="card-table" id="acctTable"><thead><tr><th>Type</th><th>Name</th><th>Currency</th><th class="mono">Amount</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
           </div>
         </div>
       </div>
@@ -274,7 +314,15 @@
             <div class="field"><label>Note</label><input id="invNote" placeholder="Optional"/></div>
           </div>
           <div class="row" style="margin-top:10px;"><button id="addInvBtn" class="btn primary">Add / Update</button></div>
-          <div style="overflow:auto;margin-top:10px;"><table id="invTable"><thead><tr><th>Name</th><th>Mode</th><th>Currency</th><th class="mono">Amount</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+          <div class="as-cards" style="overflow:auto;margin-top:10px;"><table class="card-table" id="invTable"><thead><tr><th>Name</th><th>Mode</th><th>Currency</th><th class="mono">Amount</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="spacer"></div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center;">
+            <h3>Goals — AI Mode</h3>
+            <button id="aiGoalsBtn" class="btn ghost" type="button" title="AI analyze goals">✨ AI Mode</button>
+          </div>
+          <div id="goalsAI" class="muted">Click AI Mode to get prioritized allocations and tips.</div>
         </div>
       </div>
 
@@ -296,9 +344,17 @@
             <div class="field"><label>Note/Wallet</label><input id="cNote" placeholder="Optional (e.g., Binance, Ledger)"/></div>
           </div>
           <div class="row" style="margin-top:10px;"><button id="addCryptoBtn" class="btn primary">Add / Update</button><span class="muted">Buy: enter positive qty with buy price. Sell: enter negative qty with sell price. Live prices via CoinGecko (cached 2 min).</span></div>
-          <div style="overflow:auto;margin-top:10px;">
-            <table id="cryptoTable"><thead><tr><th>Ticker</th><th>Qty</th><th>Avg Cost</th><th>Currency</th><th class="mono">Last Price (SGD/INR/USD)</th><th class="mono">Value (Base)</th><th class="mono">Realized | Unrealized (Base)</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
+          <div class="as-cards" style="overflow:auto;margin-top:10px;">
+            <table class="card-table" id="cryptoTable"><thead><tr><th>Ticker</th><th>Qty</th><th>Avg Cost</th><th>Currency</th><th class="mono">Last Price (SGD/INR/USD)</th><th class="mono">Value (Base)</th><th class="mono">Realized | Unrealized (Base)</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
           </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center;">
+            <h3>Crypto — AI Mode</h3>
+            <button id="aiCryptoBtn" class="btn ghost" type="button" title="AI analyze crypto">✨ AI Mode</button>
+          </div>
+          <div id="cryptoAI" class="muted">Click AI Mode to get allocation, concentration and risk tips.</div>
         </div>
       </div>
 
@@ -318,8 +374,16 @@
         </div>
         <div class="spacer"></div>
         <div class="card"><div class="row" style="justify-content:space-between;align-items:center;"><h3>Loans</h3><span class="chip">Sort by <select id="sortSelect" style="margin-left:6px;"><option value="created_desc">Newest</option><option value="created_asc">Oldest</option><option value="balance_desc">Balance ↓</option><option value="balance_asc">Balance ↑</option><option value="borrower_asc">Borrower A→Z</option></select></span></div>
-          <div style="overflow:auto;"><table id="loansTable"><thead><tr><th>Borrower</th><th>Currency</th><th>APR%</th><th>Principal Balance</th><th>Repaid</th><th>Interest</th><th>Last Txn</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+          <div class="as-cards" style="overflow:auto;"><table class="card-table" id="loansTable"><thead><tr><th>Borrower</th><th>Currency</th><th>APR%</th><th>Principal Balance</th><th>Repaid</th><th>Interest</th><th>Last Txn</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
           <div class="muted" style="margin-top:6px;">Tip: Configure variable rates, interest-only periods, and late fees via Terms.</div>
+        </div>
+        <div class="spacer"></div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center;">
+            <h3>Lending — AI Mode</h3>
+            <button id="aiLoansBtn" class="btn ghost" type="button" title="AI analyze lending">✨ AI Mode</button>
+          </div>
+          <div id="loansAI" class="muted">Click AI Mode to get repayment and follow-up suggestions.</div>
         </div>
       </div>
 
@@ -334,14 +398,19 @@
             <div class="field" id="tTargetWrap" style="display:none"><label>Target Account (for Transfer/CC Pay)</label><select id="tTarget"></select></div>
             <div class="field" id="tCategoryWrap"><label>Category</label><select id="tCategory"></select></div>
             <div class="field"><label>Amount</label><input id="tAmount" type="number" step="0.01"></div>
-            <div class="field"><label>Note</label><input id="tNote" placeholder="Optional"></div>
+            <div class="field"><label>Note</label>
+              <div class="row" style="gap:8px;align-items:center;padding:0">
+                <input id="tNote" placeholder="Optional" style="flex:1 1 auto;">
+                <button id="aiNoteBtn" class="btn ghost" type="button" title="AI suggest note">✨ AI Note</button>
+              </div>
+            </div>
           </div>
           <div class="row" style="margin-top:10px;"><button id="addTxnBtn" class="btn primary">Add Transaction</button>
             <button id="closeMonthBtn" class="btn warn">Close Month</button><span class="muted">Closes selected month, aggregates expenses by category, and clears detailed txns for that month.</span>
             <input type="month" id="closeMonth" style="margin-left:auto;">
           </div>
-          <div style="overflow:auto;margin-top:10px;">
-            <table id="txnTable"><thead><tr><th>Date</th><th>Type</th><th>Account</th><th>→ Target</th><th>Category</th><th class="mono">Amount</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
+          <div class="as-cards" style="overflow:auto;margin-top:10px;">
+            <table class="card-table" id="txnTable"><thead><tr><th>Date</th><th>Type</th><th>Account</th><th>→ Target</th><th>Category</th><th class="mono">Amount</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table>
           </div>
         </div>
       </div>
@@ -364,7 +433,7 @@
               <h3>Monthly Totals</h3>
               <div class="muted">Aggregated at close. Totals shown in base currency.</div>
               <div style="overflow:auto;margin-top:10px;">
-                <table id="monthlyTable"><thead><tr><th>Month</th><th>Category</th><th class="mono">Total (Base)</th></tr></thead><tbody></tbody></table>
+                <table class="card-table" id="monthlyTable"><thead><tr><th>Month</th><th>Category</th><th class="mono">Total (Base)</th></tr></thead><tbody></tbody></table>
               </div>
             </div>
           </div>
@@ -375,6 +444,7 @@
           <div class="row" style="gap:12px;align-items:end;flex-wrap:wrap;">
             <div class="field"><label>Month</label><input type="month" id="budgetMonth"></div>
             <label class="row" style="gap:8px;"><input type="checkbox" id="budgetRollover"> Enable rollover</label>
+            <button id="aiBudgetsBtn" class="btn ghost" type="button" title="AI estimate budgets from last month">✨ AI Estimate Budgets</button>
             <span class="muted">Budgets are stored in SGD internally and converted for display.</span>
           </div>
           <div style="overflow:auto;margin-top:10px;">
@@ -395,8 +465,8 @@
             <div class="field"><label>Target Date</label><input id="goalDate" type="date"/></div>
           </div>
           <div class="row" style="margin-top:10px;"><button id="addGoalBtn" class="btn primary">Add / Update Goal</button><span class="muted">Shows required monthly top-ups and a simple burn-down projection.</span></div>
-          <div style="overflow:auto;margin-top:10px;">
-            <table id="goalsTable"><thead><tr><th>Goal</th><th>Currency</th><th class="mono">Target</th><th class="mono">Current</th><th>Target Date</th><th class="mono">Months Left</th><th class="mono">Required Monthly</th><th>Actions</th></tr></thead><tbody></tbody></table>
+          <div class="as-cards" style="overflow:auto;margin-top:10px;">
+            <table class="card-table" id="goalsTable"><thead><tr><th>Goal</th><th>Currency</th><th class="mono">Target</th><th class="mono">Current</th><th>Target Date</th><th class="mono">Months Left</th><th class="mono">Required Monthly</th><th>Progress</th><th>Actions</th></tr></thead><tbody></tbody></table>
           </div>
         </div>
         <div class="spacer"></div>
@@ -423,7 +493,7 @@
               <select id="reportCat"></select>
             </div>
             <div style="margin-top:10px;overflow:auto;">
-              <table><thead><tr><th>Month</th><th class="mono">Total (Base)</th></tr></thead><tbody id="reportCatBody"></tbody></table>
+              <table class="card-table"><thead><tr><th>Month</th><th class="mono">Total (Base)</th></tr></thead><tbody id="reportCatBody"></tbody></table>
             </div>
           </div>
           <div class="card">
@@ -536,6 +606,18 @@
     <div class="modal-actions"><button class="btn ghost" onclick="closeInvTopupModal()">Cancel</button><button class="btn primary" id="confirmInvTopupBtn">Increase</button></div>
   </dialog>
 
+  <dialog id="goalTopupModal">
+    <div class="modal-header"><strong>Top-up Goal</strong><button class="btn ghost" onclick="closeGoalTopupModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Goal</label><input id="goalTopupName" disabled></div>
+      <div class="field"><label>From Account (Cash/Bank)</label><select id="goalFrom"></select></div>
+      <div class="field"><label>Date</label><input type="date" id="goalTopupDate"></div>
+      <div class="field"><label>Amount</label><input type="number" id="goalTopupAmount" step="0.01" placeholder="e.g., 500"></div>
+      <div class="muted">Deducts from selected account and increases the Goal current amount.</div>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeGoalTopupModal()">Cancel</button><button class="btn primary" id="confirmGoalTopupBtn">Top-up</button></div>
+  </dialog>
+
   <script>
     // ---------- Utilities & State ----------
     const LS_KEY='loan-tracker:v3';
@@ -559,6 +641,58 @@
     const fmt=(amt,ccy)=>new Intl.NumberFormat(undefined,{style:'currency',currency:ccy,maximumFractionDigits:2}).format(Number(amt||0));
     const todayISO=()=>new Date().toISOString().slice(0,10);
     const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
+
+    // "AI"-style smart comment generator (heuristics, on-device)
+    function generateSmartComment(kind, data){
+      try{
+        // tiny helpers for natural variation
+        const pick = (arr)=> arr[Math.floor(Math.random()*arr.length)];
+        const now=new Date(); const weekday=now.toLocaleString(undefined,{weekday:'short'});
+        if(kind==='savings' || kind==='goal' || kind==='savings-goal'){
+          const {name, amount, goal}=data||{};
+          const amt=Number(amount||0);
+          const vibes = amt>=1000? ['Huge step','Big move','Strong top-up','Great boost']
+                       : amt>=200? ['Nice progress','Solid step','Good top-up','Steady move']
+                       : ['Every bit counts','Small step today','Bit by bit adds up','Nice little boost'];
+          const closers = [
+            'Keep it going.',
+            'Stay consistent and you will get there.',
+            'You are trending the right way.',
+            'Future you says thanks.'
+          ];
+          const tag = goal? `goal “${goal}”` : (name? `“${name}”` : 'savings');
+          return `${pick(vibes)} on a ${weekday}. ${pick(['Added to', 'Contributed toward', 'Top-up for'])} ${tag}. ${pick(closers)}`;
+        }
+        // transactions
+        const {type, category, amount, date, accountName}=data||{}; const d=new Date(date||now.toISOString()); const h=d.getHours(); const part = h<12? 'morning': h<17? 'afternoon':'evening';
+        const amt=Number(amount||0);
+        const catHint = (category? String(category).toLowerCase() : 'misc');
+        if(type==='Income'){
+          const intros=['Logged','Recorded','Noted','Added'];
+          const adjectives = amt>=1000? ['a sizable','a strong','a solid'] : ['an','a'];
+          const tails=[`into ${accountName||'account'}`, 'to balances', '— nice boost'];
+          return `${pick(intros)} ${pick(adjectives)} income on ${weekday} ${part} ${pick(tails)}.`;
+        }
+        if(type==='Transfer'){
+          const phrases=[
+            `Moved funds on ${weekday} ${part} to tidy things up.`,
+            `Shifted money ${part} — keeping cashflows balanced.`,
+            `Rebalanced between accounts on ${weekday}.`
+          ];
+          return pick(phrases);
+        }
+        // Expense default
+        const openers = ['Logged','Recorded','Tracked'];
+        const watch = [
+          `Watch your ${catHint}.`,
+          `Keep an eye on ${catHint}.`,
+          `Within plan for ${catHint}.`
+        ];
+        const judgment = amt>=150? watch.slice(0,2) : watch.slice(2);
+        const big = amt>=250? ['larger ',''] : ['',''];
+        return `${pick(openers)} ${pick(big)}expense on ${weekday} ${part}. ${pick(judgment)}`;
+      }catch{ return ''; }
+    }
 
     function load(){
       try{const obj=JSON.parse(localStorage.getItem(LS_KEY)); if(obj) return obj;}catch{}
@@ -616,6 +750,109 @@
     async function fetchCryptoPrices(tickers){ const s=load(); const ids=tickers.map(t=>COINGECKO_IDS[t.toUpperCase()]).filter(Boolean); if(!ids.length) return {}; const key=ids.sort().join(','); const now=Date.now(); if(s.cache?.prices && s.cache.prices[key] && (now-s.cache.prices[key].ts)<120000) return s.cache.prices[key].data; try{ const url=`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids.join(','))}&vs_currencies=sgd,inr,usd`; const res=await fetch(url); const j=await res.json(); if(!s.cache.prices) s.cache.prices={}; s.cache.prices[key]={ts:now,data:j}; save(s); return j; }catch{return {}} }
 
     function summarize(state){ const totals={INR:{outstanding:0,repaid:0,interest:0}, SGD:{outstanding:0,repaid:0,interest:0}, USD:{outstanding:0,repaid:0,interest:0}}; state.loans.forEach(l=>{ const c=totals[l.currency]||(totals[l.currency]={outstanding:0,repaid:0,interest:0}); c.outstanding+= l.closed?0:Number(l.balance||0); c.repaid+=Number(l.totalRepaid||0); c.interest+=Number(l.totalInterest||0); }); return totals; }
+
+    // ---------- AI Health & Suggestions ----------
+    async function renderHealth(state){
+      try{
+        const base=byId('baseCcy')?.value||'SGD';
+        const rates=await fetchRates().catch(()=>({SGD:1,INR:60,USD:0.73}));
+        const toBase=(amt,ccy)=>{ amt=Number(amt)||0; const rSgdToCcy=rates[ccy]||1; const rSgdToBase=rates[base]||1; return (amt / rSgdToCcy) * rSgdToBase; };
+        // Assets/liabilities
+        let assets=0, liabilities=0, cash=0;
+        (state.accounts||[]).forEach(a=>{ const val=toBase(a.amount||0,a.currency); if((a.type||'').toLowerCase()==='credit card') liabilities+=val; else { assets+=val; cash+=val; } });
+        (state.investments||[]).forEach(i=>{ assets+=toBase(i.amount||0,i.currency); });
+        let cryptoBase=0; (state.crypto||[]).forEach(c=>{ cryptoBase+=(Number(c.quantity)||0)*Number(c.lastPrice?.[base]||0); }); assets+=cryptoBase;
+        const sums=summarize(state); const lendBase=toBase(sums.SGD?.outstanding||0,'SGD')+toBase(sums.INR?.outstanding||0,'INR');
+        const net = assets - liabilities + lendBase;
+        // Monthly expense estimate
+        const now=new Date(); const y=now.getFullYear(), m=now.getMonth(); const last3=[]; for(let i=1;i<=3;i++){ const d=new Date(y,m-i,1); last3.push(d.toISOString().slice(0,7)); }
+        let monthlyBaseList=[];
+        last3.forEach(ym=>{
+          const cats=state.monthlyTotals?.[ym];
+          if(cats){ let sgd=0; Object.values(cats).forEach(e=>{ const fxINR=Number(e?.fx?.INR||e.fx||60), fxUSD=Number(e?.fx?.USD||0.73); const inSgd=(Number(e.SGD||0)) + (Number(e.INR||0))/fxINR + (Number(e.USD||0))/fxUSD; sgd+=inSgd; }); monthlyBaseList.push(sgd*(rates[base]||1));
+          } else {
+            // fallback from transactions
+            let sgd=0; (state.transactions||[]).forEach(t=>{ if(t.type==='Expense' && t.date?.startsWith(ym)){ sgd += (Number(t.amount)||0) / (rates[t.currency]||1); } }); monthlyBaseList.push(sgd*(rates[base]||1));
+          }
+        });
+        monthlyBaseList = monthlyBaseList.filter(v=>v>0);
+        const monthlyExpense = monthlyBaseList.length? (monthlyBaseList.reduce((a,b)=>a+b,0)/monthlyBaseList.length) : 0;
+        const emergencyMonths = monthlyExpense>0? (cash / monthlyExpense) : (cash>0? 12:0);
+        // Score
+        let score=100; const advice=[];
+        if(emergencyMonths<3){ const miss=3-emergencyMonths; score -= Math.min(40, Math.round(miss*8)); advice.push(`Build emergency fund to at least 3 months. You have ~${emergencyMonths.toFixed(1)} months.`); }
+        const debtRatio = (liabilities)/(assets>0?assets:1);
+        if(debtRatio>0.25){ score -= Math.min(25, Math.round((debtRatio-0.25)*100)); advice.push(`Reduce short-term liabilities. Debt-to-assets ≈ ${(debtRatio*100).toFixed(0)}%.`); }
+        if(cryptoBase>assets*0.5){ score -= 10; advice.push('Crypto concentration >50% of assets. Consider rebalancing.'); }
+        if(lendBase>0){ advice.push('Monitor loan repayments and follow up on overdue accounts.'); }
+        if(score<0) score=0; if(score>100) score=100;
+        const scoreEl=byId('healthScore'), sumEl=byId('healthSummary'), advEl=byId('healthAdvice');
+        if(scoreEl) scoreEl.textContent=String(Math.round(score));
+        if(sumEl) sumEl.textContent = score>=80? 'Healthy overall' : score>=60? 'Moderate — some improvements needed' : 'Needs attention';
+        if(advEl){ advEl.innerHTML = advice.length? advice.map(x=>`<li>${x}</li>`).join('') : '<li>All good. Keep your savings rate steady.</li>'; }
+      }catch(e){ /* noop */ }
+    }
+
+    function aiSuggestGoals(state){
+      const base=byId('baseCcy')?.value||'SGD'; const rates=(window.__ratesCache)||{SGD:1,INR:60,USD:0.73};
+      const goals=(state.goals||[]);
+      if(!goals.length) return 'No goals yet — add one and I\'ll draft a monthly plan for you.';
+      const pick=(arr)=>arr[Math.floor(Math.random()*arr.length)];
+      const today=new Date().toISOString().slice(0,10);
+      const items=[];
+      goals.forEach(g=>{
+        const months=monthsBetweenInclusive(today.slice(0,7), g.targetDate?.slice(0,7)||today.slice(0,7));
+        const remaining=Math.max(0, Number(g.target||0)-Number(g.current||0));
+        const req = months>0? (remaining/months) : remaining;
+        items.push({name:g.name, currency:g.currency, req});
+      });
+      items.sort((a,b)=> b.req-a.req);
+      const totalReqBase = items.reduce((s,x)=> s + ((x.req/(rates[x.currency]||1))*(rates[base]||1)), 0);
+      const styles=['bullets','sentences'];
+      const style=pick(styles);
+      if(style==='sentences'){
+        const parts=items.map(x=>{
+          const pct = totalReqBase>0? Math.round(100*((x.req/(rates[x.currency]||1))*(rates[base]||1))/totalReqBase) : Math.round(100/items.length);
+          const verbs=['allocate about','aim for around','set aside roughly'];
+          return `${x.name}: ${pick(verbs)} ${pct}% (${fmt(x.req,x.currency)}/mo).`;
+        });
+        const lead = pick(['Here\'s a rough split for your goals:','Suggested monthly allocation:','Based on timelines, try this split:']);
+        return [lead, parts.join(' '), pick(['Adjust as needed.','Tweak percentages if your cashflow changes.','This is a starting point — refine over time.'])].join(' ');
+      }
+      const bullets=items.map(x=>{
+        const pct = totalReqBase>0? Math.round(100*((x.req/(rates[x.currency]||1))*(rates[base]||1))/totalReqBase) : Math.round(100/items.length);
+        const label = pick(['•','–','›']);
+        const phr = pick(['target ~','aim ~','allocate ~']);
+        return `${label} ${x.name}: ${phr}${pct}% (${fmt(x.req,x.currency)}/mo)`;
+      });
+      return bullets.join('<br>');
+    }
+    function aiSuggestLoans(state){
+      const loans=(state.loans||[]).filter(l=>!l.closed);
+      if(!loans.length) return 'No active loans — nothing to follow up right now.';
+      const pick=(arr)=>arr[Math.floor(Math.random()*arr.length)];
+      const lines=[]; const today=todayISO();
+      loans.sort((a,b)=> (Number(b.apr||0))- (Number(a.apr||0)));
+      loans.forEach(l=>{
+        const days=daysBetween(lastActivityDate(l), today);
+        const urgency = days>30? pick(['Overdue — follow up','Likely overdue — reach out','Needs attention — delayed'])
+                       : days>14? pick(['Follow up soon','Check-in recommended','Coming due — ping borrower'])
+                       : pick(['On track','Recent activity','Looks fine']);
+        lines.push(`${pick(['•','–','›'])} ${l.borrower} (${l.currency}) • APR ${Number(l.apr||0).toFixed(1)}% — ${urgency}. Balance ${fmt(l.balance,l.currency)}${days>30? ` • last activity ${days}d ago`:''}.`);
+      });
+      return lines.join('<br>');
+    }
+    function aiSuggestCrypto(state){
+      const base=byId('baseCcy')?.value||'SGD'; const rates=(window.__ratesCache)||{SGD:1,INR:60,USD:0.73};
+      const pick=(arr)=>arr[Math.floor(Math.random()*arr.length)];
+      const map={}; let total=0;
+      (state.crypto||[]).forEach(c=>{ const val=(Number(c.quantity)||0)*Number(c.lastPrice?.[base]||0); map[c.ticker]=(map[c.ticker]||0)+val; total+=val; });
+      const keys=Object.keys(map); if(!keys.length) return 'No crypto holdings.';
+      const lines=[]; keys.sort((a,b)=> map[b]-map[a]);
+      keys.forEach(k=>{ const pct= total>0? Math.round((map[k]/total)*100):0; const warn = pct>50? pick([' — high concentration',' — quite concentrated']) : pct<5? pick([' — tiny allocation',' — small slice']) : ''; lines.push(`${pick(['•','–','›'])} ${k}: ${pct}%${warn}`); });
+      if(total>0) lines.push(pick(['Tip: Keep any single asset under ~50% to reduce concentration risk.','Rule of thumb: try to keep positions below ~50% of the crypto basket.','Consider capping any one asset at ~50% to manage concentration.']));
+      return lines.join('<br>');
+    }
 
     // ---------- Navigation ----------
     function navTo(view, btn){
@@ -691,6 +928,9 @@
       // compute rollover from previous month using monthlyTotals
       const prevYm=new Date(ym+'-01'); prevYm.setMonth(prevYm.getMonth()-1); const prev=prevYm.toISOString().slice(0,7);
       const prevTotals=state.monthlyTotals?.[prev]||{}; const prevBudgets=state.budgets?.[prev]||{};
+
+      // attach helper to window for AI budgets
+      window.__prevTotalsForBudgets = { prev, prevTotals };
       const rows=[];
       cats.forEach(cat=>{
         const budSgd=Number(budgets[cat]||0);
@@ -701,11 +941,11 @@
         const budDisp = (budSgd*(rates[base]||1)); const spentDisp=(spentSgd*(rates[base]||1)); const availDisp=(availableSgd*(rates[base]||1));
         const pct = budSgd>0? Math.min(100, Math.round((spentSgd/ budSgd)*100)) : 0;
         rows.push(`<tr>
-          <td>${cat}</td>
-          <td><input type="number" min="0" step="0.01" data-cat="${cat}" class="budgetInput" value="${(budDisp).toFixed(2)}" style="width:140px;"></td>
-          <td class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(spentDisp)}</td>
-          <td class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(availDisp)}</td>
-          <td><div style="height:10px;background:var(--border);border-radius:999px;overflow:hidden;">
+          <td data-label="Category">${cat}</td>
+          <td data-label="Budget"><input type="number" min="0" step="0.01" data-cat="${cat}" class="budgetInput" value="${(budDisp).toFixed(2)}" style="width:140px;"></td>
+          <td data-label="Spent" class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(spentDisp)}</td>
+          <td data-label="Available" class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(availDisp)}</td>
+          <td data-label="Progress"><div style="height:10px;background:var(--border);border-radius:999px;overflow:hidden;">
             <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#22c55e,#3b82f6);"></div>
           </div></td>
         </tr>`);
@@ -749,7 +989,7 @@
       loans.sort((a,b)=>{ if(sort==='created_desc') return b.createdAt-a.createdAt; if(sort==='created_asc') return a.createdAt-b.createdAt; if(sort==='balance_desc') return b.balance-a.balance; if(sort==='balance_asc') return a.balance-b.balance; if(sort==='borrower_asc') return a.borrower.localeCompare(b.borrower); return 0; });
       for(const l of loans){
         const tr=document.createElement('tr'); const last=l.lastCalcDate||l.startDate;
-        tr.innerHTML=`<td>${l.borrower}</td><td>${l.currency}</td><td>${Number(l.apr).toFixed(2)}</td><td class="mono">${fmt(l.balance,l.currency)}</td><td class="mono">${fmt(l.totalRepaid||0,l.currency)}</td><td class="mono">${fmt(l.totalInterest||0,l.currency)}</td><td>${last}</td><td>${l.closed?'<span class="chip" style="border-color:#204026;color:#86efac;">Closed</span>':'<span class="chip">Active</span>'}</td><td><div class="row"><button class="btn blue" ${l.closed?'disabled':''} onclick="openPayModal('${l.id}')">Payment</button><button class="btn ghost" ${l.closed?'disabled':''} onclick="openTopupModal('${l.id}')">Top-up</button><button class="btn ghost" onclick="openTermsModal('${l.id}')">Terms</button><button class="btn warn" onclick="toggleCloseLoan('${l.id}')">${l.closed?'Reopen':'Close'}</button><button class="btn ghost" onclick="viewHistory('${l.id}')">History</button><button class="btn danger" onclick="deleteLoan('${l.id}')">Delete</button></div></td>`;
+        tr.innerHTML=`<td data-label="Borrower">${l.borrower}</td><td data-label="Currency">${l.currency}</td><td data-label="APR%">${Number(l.apr).toFixed(2)}</td><td data-label="Principal" class="mono">${fmt(l.balance,l.currency)}</td><td data-label="Repaid" class="mono">${fmt(l.totalRepaid||0,l.currency)}</td><td data-label="Interest" class="mono">${fmt(l.totalInterest||0,l.currency)}</td><td data-label="Last Txn">${last}</td><td data-label="Status">${l.closed?'<span class="chip" style="border-color:#204026;color:#86efac;">Closed</span>':'<span class="chip">Active</span>'}</td><td data-label="Actions"><div class="row"><button class="btn blue" ${l.closed?'disabled':''} onclick="openPayModal('${l.id}')">Payment</button><button class="btn ghost" ${l.closed?'disabled':''} onclick="openTopupModal('${l.id}')">Top-up</button><button class="btn ghost" onclick="openTermsModal('${l.id}')">Terms</button><button class="btn warn" onclick="toggleCloseLoan('${l.id}')">${l.closed?'Reopen':'Close'}</button><button class="btn ghost" onclick="viewHistory('${l.id}')">History</button><button class="btn danger" onclick="deleteLoan('${l.id}')">Delete</button></div></td>`;
         tbody.appendChild(tr);
       }
     }
@@ -757,7 +997,7 @@
       const tbody=document.querySelector('#acctTable tbody'); if(!tbody) return; tbody.innerHTML='';
       state.accounts.forEach(a=>{
         const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${a.type}</td><td>${a.name}</td><td>${a.currency}</td><td class="mono">${fmt(a.amount,a.currency)}</td><td>${a.note||''}</td><td><div class="row"><button class="btn ghost" onclick="editAccount('${a.id}')">Edit</button><button class="btn danger" onclick="deleteAccount('${a.id}')">Delete</button></div></td>`;
+        tr.innerHTML=`<td data-label="Type">${a.type}</td><td data-label="Name">${a.name}</td><td data-label="Currency">${a.currency}</td><td data-label="Amount" class="mono">${fmt(a.amount,a.currency)}</td><td data-label="Note">${a.note||''}</td><td data-label="Actions"><div class="row"><button class="btn ghost" onclick="editAccount('${a.id}')">Edit</button><button class="btn danger" onclick="deleteAccount('${a.id}')">Delete</button></div></td>`;
         tbody.appendChild(tr);
       });
     }
@@ -765,7 +1005,7 @@
       const tbody=document.querySelector('#invTable tbody'); if(!tbody) return; tbody.innerHTML='';
       state.investments.forEach(i=>{
         const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${i.name}</td><td>${i.mode||''}</td><td>${i.currency}</td><td class="mono">${fmt(i.amount,i.currency)}</td><td>${i.note||''}</td><td><div class="row"><button class="btn blue" onclick="openInvTopupModal('${i.id}')">Increase</button><button class="btn ghost" onclick="editInvestment('${i.id}')">Edit</button><button class="btn danger" onclick="deleteInvestment('${i.id}')">Delete</button></div></td>`;
+        tr.innerHTML=`<td data-label="Name">${i.name}</td><td data-label="Mode">${i.mode||''}</td><td data-label="Currency">${i.currency}</td><td data-label="Amount" class="mono">${fmt(i.amount,i.currency)}</td><td data-label="Note">${i.note||''}</td><td data-label="Actions"><div class="row"><button class="btn blue" onclick="openInvTopupModal('${i.id}')">Increase</button><button class="btn ghost" onclick="editInvestment('${i.id}')">Edit</button><button class="btn danger" onclick="deleteInvestment('${i.id}')">Delete</button></div></td>`;
         tbody.appendChild(tr);
       });
     }
@@ -787,15 +1027,39 @@
         const unreal = valueBase - (avgCostBase*qtyRemaining);
         const realized = c.realizedPL||0; const realizedBase = (realized / (rates[c.currency]||1)) * (rates[base]||1);
         const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${c.ticker}</td><td class="mono">${Number(qtyRemaining).toLocaleString()}</td><td class="mono">${fmt(avgCost||0,c.currency)}</td><td>${c.currency}</td><td class="mono">${last}</td><td class="mono">${fmt(valueBase||0,base)}</td><td class="mono">${fmt(realizedBase||0,base)} | <span style="color:${unreal>=0?'#86efac':'#fca5a5'};">${fmt(unreal||0,base)}</span></td><td>${c.note||''}</td><td><div class="row"><button class="btn ghost" onclick="editCrypto('${c.id}')">Edit</button><button class="btn danger" onclick="deleteCrypto('${c.id}')">Delete</button></div></td>`;
+        tr.innerHTML=`<td data-label="Ticker">${c.ticker}</td><td data-label="Qty" class="mono">${Number(qtyRemaining).toLocaleString()}</td><td data-label="Avg Cost" class="mono">${fmt(avgCost||0,c.currency)}</td><td data-label="Currency">${c.currency}</td><td data-label="Last Price" class="mono">${last}</td><td data-label="Value (Base)" class="mono">${fmt(valueBase||0,base)}</td><td data-label="Realized | Unrealized" class="mono">${fmt(realizedBase||0,base)} | <span style="color:${unreal>=0?'#86efac':'#fca5a5'};">${fmt(unreal||0,base)}</span></td><td data-label="Note">${c.note||''}</td><td data-label="Actions"><div class="row"><button class="btn ghost" onclick="editCrypto('${c.id}')">Edit</button><button class="btn danger" onclick="deleteCrypto('${c.id}')">Delete</button></div></td>`;
         tbody.appendChild(tr);
       });
     }
+    function monthLabel(ym){ try{ const d=new Date(ym+"-01"); return d.toLocaleString(undefined,{month:'short',year:'numeric'}); }catch{ return ym; } }
     function renderTransactions(state){
       const tbody=document.querySelector('#txnTable tbody'); if(!tbody) return; tbody.innerHTML='';
-      (state.transactions||[]).slice().reverse().forEach(tx=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${tx.date}</td><td>${tx.type}</td><td>${tx.accountName}</td><td>${tx.targetName||''}</td><td>${tx.category||''}</td><td class="mono">${fmt(tx.amount, tx.currency)}</td><td>${tx.note||''}</td><td><button class="btn danger" onclick="deleteTxn('${tx.id}')">Delete</button></td>`;
+      const txs=(state.transactions||[]).slice().sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+      let lastYM='';
+      txs.forEach(tx=>{
+        const ym=(tx.date||'').slice(0,7);
+        if(ym && ym!==lastYM){
+          const hdr=document.createElement('tr'); hdr.className='month-header';
+          hdr.innerHTML=`<th colspan="8">${monthLabel(ym)}</th>`; tbody.appendChild(hdr); lastYM=ym;
+        }
+        const tr=document.createElement('tr'); tr.className='swipeable';
+        const actionsHTML=`<div class="row"><button class="btn ghost" onclick="editTxn('${tx.id}')">Edit</button><button class="btn danger" onclick="deleteTxn('${tx.id}')">Delete</button></div>`;
+        tr.innerHTML=`<div class="swipe-content">
+          <td data-label="Date">${tx.date}</td>
+          <td data-label="Type">${tx.type}</td>
+          <td data-label="Account">${tx.accountName}</td>
+          <td data-label="→ Target">${tx.targetName||''}</td>
+          <td data-label="Category">${tx.category||''}</td>
+          <td data-label="Amount" class="mono">${fmt(tx.amount, tx.currency)}</td>
+          <td data-label="Note">${tx.note||''}</td>
+          <td data-label="Actions">${actionsHTML}</td>
+        </div>
+        <div class="swipe-actions">${actionsHTML}</div>`;
+        // Attach swipe handlers (mobile)
+        let startX=0, startY=0, swiped=false;
+        tr.addEventListener('touchstart', e=>{ const t=e.touches[0]; startX=t.clientX; startY=t.clientY; swiped=false; }, {passive:true});
+        tr.addEventListener('touchmove', e=>{ const t=e.touches[0]; const dx=t.clientX-startX; const dy=t.clientY-startY; if(Math.abs(dx)>24 && Math.abs(dx)>Math.abs(dy)){ if(dx<-24){ tr.classList.add('swiped'); swiped=true; } if(dx>24){ tr.classList.remove('swiped'); } } }, {passive:true});
+        tr.addEventListener('touchend', ()=>{ if(!swiped){ /* tap noop */ } }, {passive:true});
         tbody.appendChild(tr);
       });
     }
@@ -815,13 +1079,13 @@
           const amtInSGD = (Number(entry.SGD||0)) + (Number(entry.INR||0))/fxINR + (Number(entry.USD||0))/fxUSD;
           const totalBase = amtInSGD * (rates[base]||1);
           const tr=document.createElement('tr');
-          tr.innerHTML=`<td>${m}</td><td>${cat}</td><td class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(totalBase)}</td>`;
+          tr.innerHTML=`<td data-label="Month">${m}</td><td data-label="Category">${cat}</td><td data-label="Total" class="mono">${new Intl.NumberFormat(undefined,{style:'currency',currency:base,maximumFractionDigits:2}).format(totalBase)}</td>`;
           tbody.appendChild(tr);
         });
       });
     }
 
-    function refresh(){ const s=load(); ensureStores(s); renderKPIs(s); renderLoans(s); renderAccounts(s); renderInvestments(s); renderCrypto(s); renderTransactions(s); renderCategories(s); renderBudgets(s); renderReports(s); renderGoals(s); hydrateAccountSelects(); }
+    function refresh(){ const s=load(); ensureStores(s); renderKPIs(s); renderLoans(s); renderAccounts(s); renderInvestments(s); renderCrypto(s); renderTransactions(s); renderCategories(s); renderBudgets(s); renderReports(s); renderGoals(s); renderHealth(s); hydrateAccountSelects(); }
 
     // ---------- Loans CRUD ----------
     function addLoan(){ const borrower=byId('borrower').value.trim(); const currency=byId('currency').value; const principal=Number(byId('principal').value||0); const apr=Number(byId('apr').value||0); const startDate=byId('startDate').value||todayISO(); const notes=byId('notes').value.trim(); if(!borrower||!principal||principal<=0) return alert('Enter borrower and positive principal.'); if(!['INR','SGD','USD'].includes(currency)) return alert('Currency must be INR, SGD, or USD.'); const s=load(); const loan={ id:uid(), borrower,currency,apr,startDate,notes,balance:principal,totalRepaid:0,totalInterest:0,lastCalcDate:startDate,closed:false,createdAt:Date.now(), txns:[{type:'create',date:startDate,amount:principal,balanceAfter:principal,note:notes}] }; s.loans.push(loan); save(s); ['borrower','principal','apr','notes'].forEach(id=>byId(id).value=''); byId('startDate').value=''; refresh(); }
@@ -914,7 +1178,8 @@
       if(from.amount<amount) return alert('Insufficient funds');
       from.amount=Number((from.amount-amount).toFixed(2));
       inv.amount=Number((Number(inv.amount||0)+amount).toFixed(2));
-      s.transactions.push({ id:uid(), date, type:'Expense', account:from.id, accountName:from.name, category:'Savings', amount, currency:from.currency, note:`Top-up ${inv.name}` });
+      const ai=generateSmartComment('savings',{name:inv.name, amount});
+      s.transactions.push({ id:uid(), date, type:'Expense', account:from.id, accountName:from.name, category:'Savings', amount, currency:from.currency, note:`Top-up ${inv.name}${ai? ' — '+ai:''}` });
       save(s); closeInvTopupModal(); refresh();
     }
 
@@ -1013,10 +1278,12 @@
       const tgtId=byId('tTarget').value;
       const cat=byId('tCategory').value;
       const amount=Number(byId('tAmount').value||0);
-      const note=byId('tNote').value.trim();
+      let note=byId('tNote').value.trim();
       if(!accId||amount<=0) return alert('Select account and positive amount');
       const acc=s.accounts.find(a=>a.id===accId); if(!acc) return;
       if(type!=='Transfer' && !cat) return alert('Pick a category');
+
+      if(!note){ note = generateSmartComment('txn', {type, category:cat, amount, date, accountName:acc.name}); }
 
       if(type==='Expense'){
         if(acc.type==='Credit Card'){ acc.amount=Number((acc.amount+amount).toFixed(2)); }
@@ -1037,6 +1304,7 @@
       }
       save(s); renderAccounts(s); renderKPIs(s); renderTransactions(s); hydrateAccountSelects(); ['tAmount','tNote'].forEach(id=>byId(id).value='');
     }
+    function editTxn(id){ const s=load(); const t=(s.transactions||[]).find(x=>x.id===id); if(!t) return; const newNote=prompt('Edit note for this transaction:', t.note||''); if(newNote===null) return; t.note=(newNote||'').trim(); save(s); renderTransactions(s); }
     function deleteTxn(id){ const s=load(); s.transactions=s.transactions.filter(t=>t.id!==id); save(s); renderTransactions(s); }
     function closeMonth(){
       const s=load(); const ym=byId('closeMonth').value; if(!ym) return alert('Pick a month (YYYY-MM)');
@@ -1056,12 +1324,39 @@
     // ---------- Goals ----------
     function monthsBetweenInclusive(aIso,bIso){ const a=new Date(aIso+'-01'); const b=new Date(bIso+'-01'); const months=(b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth()); return Math.max(0, months); }
     function renderGoals(state){ const tbody=document.querySelector('#goalsTable tbody'); if(!tbody) return; tbody.innerHTML=''; const base=byId('baseCcy')?.value||'SGD'; const select=byId('goalSelect'); if(select) { select.innerHTML=''; }
-      (state.goals||[]).forEach(g=>{ const today=new Date().toISOString().slice(0,10); const months=monthsBetweenInclusive(today.slice(0,7), g.targetDate?.slice(0,7)||today.slice(0,7)); const remaining=Math.max(0, Number(g.target||0)-Number(g.current||0)); const req = months>0? (remaining/months) : remaining; const tr=document.createElement('tr'); tr.innerHTML=`<td>${g.name}</td><td>${g.currency}</td><td class="mono">${fmt(g.target||0,g.currency)}</td><td class="mono">${fmt(g.current||0,g.currency)}</td><td>${g.targetDate||''}</td><td class="mono">${months}</td><td class="mono">${fmt(req||0,g.currency)}</td><td><button class="btn danger" onclick="deleteGoal('${g.id}')">Delete</button></td>`; tbody.appendChild(tr); if(select){ const o=document.createElement('option'); o.value=g.id; o.textContent=g.name; select.appendChild(o);} });
+      (state.goals||[]).forEach(g=>{ const today=new Date().toISOString().slice(0,10); const months=monthsBetweenInclusive(today.slice(0,7), g.targetDate?.slice(0,7)||today.slice(0,7)); const remaining=Math.max(0, Number(g.target||0)-Number(g.current||0)); const req = months>0? (remaining/months) : remaining; const pct = Math.min(100, Math.round((Number(g.current||0)/Math.max(1,Number(g.target||0)))*100)); const bar = `<div style='height:10px;background:var(--border);border-radius:999px;overflow:hidden;'><div style='height:100%;width:${pct}%;background:linear-gradient(90deg,#3b82f6,#22c55e)'></div></div>`; const tr=document.createElement('tr'); tr.innerHTML=`<td data-label="Goal">${g.name}</td><td data-label="Currency">${g.currency}</td><td data-label="Target" class="mono">${fmt(g.target||0,g.currency)}</td><td data-label="Current" class="mono">${fmt(g.current||0,g.currency)}</td><td data-label="Target Date">${g.targetDate||''}</td><td data-label="Months Left" class="mono">${months}</td><td data-label="Required Monthly" class="mono">${fmt(req||0,g.currency)}</td><td data-label="Progress">${bar}</td><td data-label="Actions"><div class='row'><button class='btn blue' onclick="openGoalTopupModal('${g.id}')">Top-up</button><button class='btn danger' onclick="deleteGoal('${g.id}')">Delete</button></div></td>`; tbody.appendChild(tr); if(select){ const o=document.createElement('option'); o.value=g.id; o.textContent=g.name; select.appendChild(o);} });
       renderBurndown(state);
     }
     function renderBurndown(state){ const wrap=byId('burndownWrap'); if(!wrap) return; const sel=byId('goalSelect'); if(!sel || !sel.value){ wrap.innerHTML='<div class="muted">Select a goal to see projection.</div>'; return; } const g=(state.goals||[]).find(x=>x.id===sel.value); if(!g){ wrap.innerHTML='<div class="muted">Goal not found.</div>'; return;} const today=new Date().toISOString().slice(0,10); const months=monthsBetweenInclusive(today.slice(0,7), g.targetDate?.slice(0,7)||today.slice(0,7)); const remaining=Math.max(0, Number(g.target||0)-Number(g.current||0)); const req = months>0? (remaining/months) : remaining; let cur=Number(g.current||0); const rows=['<table><thead><tr><th>Month</th><th class="mono">Projected Balance</th></tr></thead><tbody>']; for(let i=0;i<=months;i++){ const d=new Date(); d.setMonth(d.getMonth()+i); const ym=d.toISOString().slice(0,7); rows.push(`<tr><td>${ym}</td><td class="mono">${fmt(cur,g.currency)}</td></tr>`); cur = Number((cur+req).toFixed(2)); } rows.push('</tbody></table>'); wrap.innerHTML=rows.join(''); }
     function addGoal(){ const name=byId('goalName').value.trim(); const currency=byId('goalCcy').value; const target=Number(byId('goalTarget').value||0); const current=Number(byId('goalCurrent').value||0); const targetDate=byId('goalDate').value; if(!name||!target||target<=0) return alert('Enter goal name and positive target'); const s=load(); ensureStores(s); let g=s.goals.find(x=>x.name.toLowerCase()===name.toLowerCase() && x.currency===currency); if(!g){ g={id:uid()}; s.goals.push(g);} Object.assign(g,{name,currency,target,current,targetDate}); save(s); ['goalName','goalTarget','goalCurrent','goalDate'].forEach(id=>byId(id).value=''); renderGoals(s); }
     function deleteGoal(id){ const s=load(); s.goals=(s.goals||[]).filter(g=>g.id!==id); save(s); renderGoals(s); }
+
+    // Goal Top-up from Account
+    let currentGoalId=null;
+    function openGoalTopupModal(goalId){
+      currentGoalId=goalId; const s=load(); const g=(s.goals||[]).find(x=>x.id===goalId); if(!g) return;
+      byId('goalTopupName').value=g.name+` (${g.currency})`;
+      const sel=byId('goalFrom'); if(sel){ sel.innerHTML='';
+        const bank=(s.accounts||[]).filter(a=>a.type!=='Credit Card' && a.currency===g.currency);
+        bank.forEach(a=>{ const opt=document.createElement('option'); opt.value=a.id; opt.textContent=`${a.name} (${a.currency}) - ${fmt(a.amount,a.currency)}`; sel.appendChild(opt); });
+      }
+      byId('goalTopupDate').value=todayISO(); byId('goalTopupAmount').value='';
+      byId('goalTopupModal').showModal();
+    }
+    function closeGoalTopupModal(){ byId('goalTopupModal').close(); }
+    function confirmGoalTopup(){
+      const s=load(); const g=(s.goals||[]).find(x=>x.id===currentGoalId); if(!g) return;
+      const fromId=byId('goalFrom').value; const from=(s.accounts||[]).find(a=>a.id===fromId);
+      const date=byId('goalTopupDate').value||todayISO(); const amount=Number(byId('goalTopupAmount').value||0);
+      if(!fromId||amount<=0) return alert('Select account and enter positive amount');
+      if(from.currency!==g.currency) return alert('Account and goal currency must match');
+      if(from.amount<amount) return alert('Insufficient funds');
+      from.amount=Number((from.amount-amount).toFixed(2));
+      g.current=Number((Number(g.current||0)+amount).toFixed(2));
+      const ai=generateSmartComment('savings',{goal:g.name, amount});
+      s.transactions.push({ id:uid(), date, type:'Expense', account:from.id, accountName:from.name, category:'Goals', amount, currency:from.currency, note:`Top-up ${g.name}${ai? ' — '+ai:''}` });
+      save(s); closeGoalTopupModal(); renderGoals(s); renderKPIs(s); renderAccounts(s); renderTransactions(s);
+    }
 
     let deferredPrompt = null;
 
@@ -1072,7 +1367,7 @@
       if (btn) btn.style.display = 'inline-block';
     });
 
-    byId('installBtn')?.addEventListener('click', async () => {
+    byId('installBtn')?.addEventListener('click', async ()=> {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
       await deferredPrompt.userChoice;
@@ -1107,9 +1402,8 @@
           navTo('settings', document.querySelector('.nav button[data-view="settings"]'));
           return;
         }
-        // Immediately lock regardless of idle setting
-        const ov=document.getElementById('lockOverlay');
-        if(ov){ document.getElementById('lockMsg').textContent='Locked by user.'; ov.style.display='flex'; document.body.style.overflow='hidden'; localStorage.setItem('loan-tracker:locked','1'); }
+        // Immediately lock + mark for encryption on next password entry
+        if(typeof showLock==='function') showLock('Locked by user.');
       });
 
       // topbar
@@ -1144,20 +1438,50 @@
       byId('tType').addEventListener('change',onTxnTypeChange);
       byId('addTxnBtn').addEventListener('click',addTransaction);
       byId('closeMonthBtn').addEventListener('click',closeMonth);
+      byId('aiNoteBtn').addEventListener('click',()=>{
+        const date=byId('tDate').value||todayISO(); const type=byId('tType').value; const accId=byId('tAccount').value; const s=load(); const acc=s.accounts.find(a=>a.id===accId);
+        const cat=byId('tCategory').value; const amount=Number(byId('tAmount').value||0);
+        const note=generateSmartComment('txn',{type,category:cat,amount,date,accountName:acc?.name});
+        if(note) byId('tNote').value=note;
+      });
 
       // budgets
       const bm=byId('budgetMonth'); if(bm){ bm.value=ymToday(); bm.addEventListener('change',()=>renderBudgets(load())); }
       const br=byId('budgetRollover'); if(br){ br.addEventListener('change',()=>{ const s=load(); ensureStores(s); s.settings.rollover=br.checked; save(s); renderBudgets(s); }); }
+      const aiBudBtn=byId('aiBudgetsBtn'); if(aiBudBtn){ aiBudBtn.addEventListener('click',async()=>{
+        const s=load(); ensureStores(s);
+        const ym=(byId('budgetMonth')?.value)||ymToday(); if(!s.budgets[ym]) s.budgets[ym]={};
+        // Determine prev month
+        const d=new Date(ym+'-01'); d.setMonth(d.getMonth()-1); const prev=d.toISOString().slice(0,7);
+        let prevTotals = (s.monthlyTotals?.[prev]) || {};
+        // Fallback: compute from transactions if monthlyTotals missing
+        if(!Object.keys(prevTotals).length){
+          const rates = await fetchRates().catch(()=>({SGD:1,INR:60,USD:0.73}));
+          const map={}; (s.transactions||[]).forEach(t=>{ if(t.type==='Expense' && t.date?.startsWith(prev)){ const cat=t.category||'Others'; if(!map[cat]) map[cat]={SGD:0,INR:0,USD:0, fx:{INR:rates.INR||60, USD:rates.USD||0.73}}; map[cat][t.currency]=Number((Number(map[cat][t.currency]||0)+Number(t.amount||0)).toFixed(2)); }});
+          prevTotals=map;
+        }
+        // Copy last month's actuals into this month's budgets (in SGD)
+        Object.keys(prevTotals).forEach(cat=>{
+          const e=prevTotals[cat]; if(!e) return; const fxINR=Number(e?.fx?.INR||e.fx||60), fxUSD=Number(e?.fx?.USD||0.73);
+          const inSgd=(Number(e.SGD||0)) + (Number(e.INR||0))/fxINR + (Number(e.USD||0))/fxUSD;
+          s.budgets[ym][cat]=Number(inSgd.toFixed(2));
+        });
+        save(s); renderBudgets(s);
+        alert('Budgets estimated from last month totals (auto-calculated if month wasn\'t closed). You can fine-tune values as needed.');
+      }); }
 
       // reports react to base currency change automatically via refresh
 
       // dashboard controls
-      byId('baseCcy').addEventListener('change',()=>{ const s=load(); renderKPIs(s); renderCategories(s); renderCrypto(s); renderBudgets(s); renderReports(s); renderGoals(s); });
-      byId('includeLending').addEventListener('change',()=>renderKPIs(load()));
+      byId('baseCcy').addEventListener('change',()=>{ const s=load(); renderKPIs(s); renderCategories(s); renderCrypto(s); renderBudgets(s); renderReports(s); renderGoals(s); renderHealth(s); });
+      byId('includeLending').addEventListener('change',()=>{ const s=load(); renderKPIs(s); renderHealth(s); });
 
       // goals
       byId('addGoalBtn').addEventListener('click',addGoal);
       byId('goalSelect').addEventListener('change',()=>renderBurndown(load()));
+      byId('aiGoalsBtn')?.addEventListener('click',()=>{ const s=load(); const el=byId('goalsAI'); if(el) el.innerHTML = aiSuggestGoals(s); });
+      byId('aiLoansBtn')?.addEventListener('click',()=>{ const s=load(); const el=byId('loansAI'); if(el) el.innerHTML = aiSuggestLoans(s); });
+      byId('aiCryptoBtn')?.addEventListener('click',()=>{ const s=load(); const el=byId('cryptoAI'); if(el) el.innerHTML = aiSuggestCrypto(s); });
 
       // init
       navTo('dashboard', document.querySelector('.nav button[data-view="dashboard"]'));
@@ -1166,21 +1490,76 @@
       byId('ccDate').value=todayISO();
       hydrateAccountSelects();
 
-      // security lock settings
-      const PASS_KEY='loan-tracker:passhash'; const LOCK_KEY='loan-tracker:lockEnabled'; const LAST_ACT='loan-tracker:lastActivity'; const LOCKED='loan-tracker:locked';
+      // security lock settings with encryption
+      const PASS_KEY='loan-tracker:passhash'; const LOCK_KEY='loan-tracker:lockEnabled'; const LAST_ACT='loan-tracker:lastActivity'; const LOCKED='loan-tracker:locked'; const ENC_KEY='loan-tracker:enc'; const ENC_META='loan-tracker:encmeta'; const ENC_PENDING='loan-tracker:encPending'; const PTBUF='loan-tracker:ptbuf';
       async function sha256(txt){ const enc=new TextEncoder().encode(txt); const buf=await crypto.subtle.digest('SHA-256', enc); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
-      function showLock(msg){ const ov=byId('lockOverlay'); if(!ov) return; byId('lockMsg').textContent=msg||'Inactive for 10 minutes.'; ov.style.display='flex'; document.body.style.overflow='hidden'; localStorage.setItem(LOCKED,'1'); }
+      const b64 = { enc:(buf)=> btoa(String.fromCharCode(...new Uint8Array(buf))), dec:(b)=> Uint8Array.from(atob(b), c=>c.charCodeAt(0)).buffer };
+      async function deriveKey(password, salt){ const enc=new TextEncoder().encode(password); const keyMaterial=await crypto.subtle.importKey('raw', enc, 'PBKDF2', false, ['deriveKey']); return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:100000, hash:'SHA-256'}, keyMaterial, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']); }
+      async function encryptJson(jsonStr, password){ const salt=crypto.getRandomValues(new Uint8Array(16)); const iv=crypto.getRandomValues(new Uint8Array(12)); const key=await deriveKey(password, salt); const data=new TextEncoder().encode(jsonStr); const ct=await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, data); return { ct:b64.enc(ct), salt:b64.enc(salt), iv:b64.enc(iv) }; }
+      async function decryptJson(pack, password){ const salt=new Uint8Array(b64.dec(pack.salt)); const iv=new Uint8Array(b64.dec(pack.iv)); const key=await deriveKey(password, salt); const pt=await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, b64.dec(pack.ct)); return new TextDecoder().decode(pt); }
+      function showLock(msg){
+        const ov=byId('lockOverlay'); if(!ov) return;
+        byId('lockMsg').textContent=msg||'Inactive for 10 minutes.';
+        ov.style.display='flex'; document.body.style.overflow='hidden';
+        localStorage.setItem(LOCKED,'1');
+        // On lock, immediately purge plaintext from localStorage; keep only encrypted data.
+        const plain=localStorage.getItem(LS_KEY);
+        if(plain){
+          try{ sessionStorage.setItem(PTBUF, plain); }catch{}
+          localStorage.removeItem(LS_KEY);
+          localStorage.setItem(ENC_PENDING,'1');
+          byId('lockMsg').textContent='Locked. Enter password to encrypt your data now.';
+        }
+      }
       function hideLock(){ const ov=byId('lockOverlay'); if(!ov) return; ov.style.display='none'; document.body.style.overflow=''; localStorage.removeItem(LOCKED); }
       async function checkIdle(){ const lockEnabled=localStorage.getItem(LOCK_KEY)==='1'; const hasPass=!!localStorage.getItem(PASS_KEY); if(!lockEnabled||!hasPass) return; const last=Number(localStorage.getItem(LAST_ACT)||Date.now()); if(Date.now()-last>=600000){ showLock(); } }
       function poke(){ localStorage.setItem(LAST_ACT, Date.now().toString()); }
       ['mousemove','keydown','touchstart','click'].forEach(ev=>document.addEventListener(ev, poke, {passive:true})); poke(); setInterval(checkIdle, 15000); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkIdle(); });
-      byId('unlockBtn').addEventListener('click', async()=>{ const p=byId('unlockPass').value; const hash=await sha256(p); if(hash===localStorage.getItem(PASS_KEY)){ byId('unlockPass').value=''; hideLock(); poke(); } else { byId('lockMsg').textContent='Incorrect password.'; } });
+
+      byId('unlockBtn').addEventListener('click', async()=>{
+        const p=byId('unlockPass').value;
+        if(!p){ byId('lockMsg').textContent='Enter password.'; return; }
+        // If we have pending encryption, encrypt from session buffer or plaintext if present, then keep locked
+        if(localStorage.getItem(ENC_PENDING)==='1' && (sessionStorage.getItem(PTBUF) || localStorage.getItem(LS_KEY))){
+          try{
+            const jsonStr = localStorage.getItem(LS_KEY) || sessionStorage.getItem(PTBUF);
+            const pack=await encryptJson(jsonStr, p);
+            localStorage.setItem(ENC_KEY, pack.ct);
+            localStorage.setItem(ENC_META, JSON.stringify({salt:pack.salt, iv:pack.iv}));
+            localStorage.removeItem(LS_KEY);
+            try{ sessionStorage.removeItem(PTBUF); }catch{}
+            localStorage.removeItem(ENC_PENDING);
+            // After encrypting, immediately restore plaintext for current session and unlock to avoid double entry
+            localStorage.setItem(LS_KEY, jsonStr);
+            byId('unlockPass').value='';
+            hideLock(); poke();
+            return;
+          }catch(e){ byId('lockMsg').textContent='Encryption failed. Try again.'; return; }
+        }
+        // If encrypted data exists, try to decrypt
+        const ct=localStorage.getItem(ENC_KEY); const metaStr=localStorage.getItem(ENC_META);
+        if(ct && metaStr){
+          try{
+            const meta=JSON.parse(metaStr); const pack={ct, salt:meta.salt, iv:meta.iv};
+            const json=await decryptJson(pack, p);
+            localStorage.setItem(LS_KEY, json);
+            byId('unlockPass').value=''; hideLock(); poke();
+            return;
+          }catch(e){ byId('lockMsg').textContent='Incorrect password or decryption failed.'; return; }
+        }
+        // Fallback to hash-only check if nothing encrypted yet
+        const hash=await sha256(p); if(hash===localStorage.getItem(PASS_KEY)){ byId('unlockPass').value=''; hideLock(); poke(); } else { byId('lockMsg').textContent='Incorrect password.'; }
+      });
+
       const lockChk=byId('lockEnabled'); const saveBtn=byId('savePassBtn'); const clearBtn=byId('clearPassBtn');
       if(lockChk){ lockChk.checked = localStorage.getItem(LOCK_KEY)==='1'; lockChk.addEventListener('change',()=>{ localStorage.setItem(LOCK_KEY, lockChk.checked?'1':'0'); }); }
       saveBtn?.addEventListener('click', async ()=>{ const a=byId('newPass').value, b=byId('newPass2').value; if(!a||a!==b) return alert('Passwords empty or do not match.'); const h=await sha256(a); localStorage.setItem(PASS_KEY,h); localStorage.setItem(LOCK_KEY, (byId('lockEnabled').checked?'1':'0')); byId('newPass').value=''; byId('newPass2').value=''; alert('Password saved.'); });
       clearBtn?.addEventListener('click', ()=>{ if(!confirm('Clear password?')) return; localStorage.removeItem(PASS_KEY); alert('Password cleared.'); });
       // if previously locked
       if(localStorage.getItem(LOCKED)==='1') showLock('Session locked.');
+
+      // goals top-up wiring
+      byId('confirmGoalTopupBtn').addEventListener('click', confirmGoalTopup);
 
       // bottom nav wiring
       document.querySelectorAll('.bottom-nav button').forEach(btn=>{

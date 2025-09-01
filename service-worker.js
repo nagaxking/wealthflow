@@ -7,9 +7,9 @@
   Last updated: 2025-08-29 23:29 (local)
 */
 
-const CACHE = 'loan-tracker-cache-v3';
+const CACHE = 'loan-tracker-cache-v5';
 const ASSETS = [
-  './', './index.html', './manifest.webmanifest',
+  './manifest.webmanifest',
   './icon-192.png', './icon-512.png', './icon.svg', './icon-maskable.svg',
   './apple-touch-icon-180.png', './offline.html'
 ];
@@ -30,9 +30,24 @@ self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
-// Fetch: cache-first with network fallback and background cache update
+// Fetch: network-first for HTML (navigate) to ensure latest UI; cache-first for same-origin others
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  // Do not intercept cross-origin requests (e.g., CDN, model files)
+  if (url.origin !== self.location.origin) return;
+  const accept = e.request.headers.get('accept') || '';
+  const isHTML = e.request.mode === 'navigate' || accept.includes('text/html');
+  if (isHTML) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+        return res;
+      }).catch(() => caches.match('./index.html').then(m => m || caches.match('./offline.html')))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(cached =>
       cached || fetch(e.request).then(res => {

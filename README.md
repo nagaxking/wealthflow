@@ -18,6 +18,12 @@ APP :[WealthFlow Live ](https://nagaxking.github.io/wealthflow/)
 - Crypto: FIFO/LIFO lot method, realized and unrealized P/L in base currency
 - Security Lock: optional 10-minute idle lock and manual Lock button (password hash stored locally via SHA-256)
 
+## What’s new (AI natural phrasing — 2025-09-01 16:54)
+- On-device “AI Mode” suggestions now use varied, natural wording for:
+  - Transaction notes, savings/goal top-ups, Goals split, Loans follow-ups, Crypto allocation tips.
+- Privacy unchanged: still fully local, offline. No external AI calls.
+- Docs: see “AI Mode (on-device heuristics)” below.
+
 ## Highlights
 - Single‑page app with clean, responsive UI (mobile‑friendly with slide‑out sidebar)
 - PWA: installable, offline‑first caching, standalone mode
@@ -169,6 +175,7 @@ Notes:
 - If you modify static assets, consider bumping the `CACHE` version in `service-worker.js` to invalidate old caches
 - Ensure `manifest.webmanifest`, `service-worker.js`, and icons reside at the app root alongside `index.html`
 
+
 ## Troubleshooting
 - PWA not installing? Check HTTPS or use `localhost`, verify manifest and service worker paths
 - Seeing stale assets? Clear site data or increment `CACHE` name in `service-worker.js`
@@ -178,3 +185,16 @@ Notes:
 ## License
 This project has no explicit license in the repository. Add a license file if you intend to distribute it.
 
+
+
+## AI Mode (on-device heuristics)
+- The app includes lightweight, on-device “AI Mode” helpers that generate natural suggestions without calling external LLMs.
+- Areas covered:
+  - Financial Health tips on Dashboard
+  - Goals — monthly allocation suggestions
+  - Lending — follow-up urgency and reminders
+  - Crypto — allocation/concentration notes
+  - Transaction notes — smart, natural phrasing for quick entry
+- Naturalness improvements: phrasing now varies with randomized synonyms, sentence structures, and context (amounts, time of day, last activity). This avoids repetitive, fixed text.
+- Privacy: all suggestions are generated in your browser; no data leaves your device.
+- Tip: Because phrasing is intentionally varied, two clicks may yield different wording while conveying the same guidance. If you prefer consistent phrasing, you can copy your favorite suggestion into the note field and edit as needed.
